@@ -466,7 +466,8 @@ import * as THREE from 'three';
 //  CONSTANTS
 // ============================================================
 const CHUNK_SIZE = 16;
-const WORLD_CHUNKS = 6; // 6x6 chunks
+const WORLD_CHUNKS = 6; // legacy (used by adventure levels)
+const RENDER_DISTANCE = 5; // chunks in each direction (infinite world)
 const CHUNK_HEIGHT = 64;
 const SEA_LEVEL = 28;
 const GRAVITY = -28;
@@ -1403,15 +1404,16 @@ class Chunk {
 //  WORLD
 // ============================================================
 class World {
-  constructor(scene, texGen) {
+  constructor(scene, texGen, isInfinite = false) {
     this.scene = scene;
     this.texGen = texGen;
     this.chunks = new Map();
     this.noise = new ValueNoise(Math.random() * 100000 | 0);
+    this.isInfinite = isInfinite;
+    this.dirtyChunks = new Set();
   }
 
   getChunkKey(cx, cz) { return `${cx},${cz}`; }
-
   getChunk(cx, cz) { return this.chunks.get(this.getChunkKey(cx, cz)); }
 
   getBlock(x, y, z) {
@@ -1422,22 +1424,9 @@ class World {
     return chunk.get(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE);
   }
 
-  setBlock(x, y, z, val) {
-    const cx = Math.floor(x / CHUNK_SIZE);
-    const cz = Math.floor(z / CHUNK_SIZE);
-    const chunk = this.getChunk(cx, cz);
-    if (!chunk) return;
-    chunk.set(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE, val);
-    // Rebuild this chunk and neighbors if on edge
-    chunk.buildMesh(this.texGen);
-    const lx = x - cx * CHUNK_SIZE;
-    const lz = z - cz * CHUNK_SIZE;
-    if (lx === 0) { const nc = this.getChunk(cx - 1, cz); if (nc) nc.buildMesh(this.texGen); }
-    if (lx === CHUNK_SIZE - 1) { const nc = this.getChunk(cx + 1, cz); if (nc) nc.buildMesh(this.texGen); }
-    if (lz === 0) { const nc = this.getChunk(cx, cz - 1); if (nc) nc.buildMesh(this.texGen); }
-    if (lz === CHUNK_SIZE - 1) { const nc = this.getChunk(cx, cz + 1); if (nc) nc.buildMesh(this.texGen); }
-  }
 
+
+  // Fixed world for adventure levels
   generate() {
     const half = Math.floor(WORLD_CHUNKS / 2);
     for (let cx = -half; cx < -half + WORLD_CHUNKS; cx++) {
@@ -1447,10 +1436,72 @@ class World {
         this.chunks.set(this.getChunkKey(cx, cz), chunk);
       }
     }
-    // Build meshes
     for (const chunk of this.chunks.values()) {
       chunk.buildMesh(this.texGen);
     }
+  }
+
+  // Dynamic chunk loading for infinite world
+  updateChunks(playerX, playerZ, scene, texGen) {
+    if (!this.isInfinite) return;
+    const pcx = Math.floor(playerX / CHUNK_SIZE);
+    const pcz = Math.floor(playerZ / CHUNK_SIZE);
+
+    // Load missing chunks (max 2 per frame to avoid stutter)
+    let loaded = 0;
+    for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE && loaded < 2; dx++) {
+      for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE && loaded < 2; dz++) {
+        // Prioritize closer chunks
+        const dist = Math.abs(dx) + Math.abs(dz);
+        if (dist > RENDER_DISTANCE) continue;
+        const cx = pcx + dx, cz = pcz + dz;
+        const key = this.getChunkKey(cx, cz);
+        if (!this.chunks.has(key)) {
+          const chunk = new Chunk(cx, cz, this);
+          chunk.generate(this.noise);
+          chunk.buildMesh(texGen);
+          this.chunks.set(key, chunk);
+          loaded++;
+        }
+      }
+    }
+
+    // Unload far chunks
+    for (const [key, chunk] of this.chunks) {
+      const dist = Math.abs(chunk.cx - pcx) + Math.abs(chunk.cz - pcz);
+      if (dist > RENDER_DISTANCE + 2) {
+        chunk.dispose();
+        this.chunks.delete(key);
+      }
+    }
+
+    // Rebuild dirty chunks (max 2 per frame)
+    let rebuilt = 0;
+    for (const key of this.dirtyChunks) {
+      if (rebuilt >= 2) break;
+      const chunk = this.chunks.get(key);
+      if (chunk && chunk.dirty) {
+        chunk.buildMesh(texGen);
+        rebuilt++;
+      }
+      this.dirtyChunks.delete(key);
+    }
+  }
+
+  setBlock(x, y, z, val) {
+    if (y < 0 || y >= CHUNK_HEIGHT) return;
+    const cx = Math.floor(x / CHUNK_SIZE);
+    const cz = Math.floor(z / CHUNK_SIZE);
+    const chunk = this.getChunk(cx, cz);
+    if (!chunk) return;
+    chunk.set(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE, val);
+    // Mark neighbors dirty if on edge
+    const lx = x - cx * CHUNK_SIZE;
+    const lz = z - cz * CHUNK_SIZE;
+    if (lx === 0) { const nc = this.getChunk(cx - 1, cz); if (nc) this.dirtyChunks.add(this.getChunkKey(cx - 1, cz)); }
+    if (lx === CHUNK_SIZE - 1) { const nc = this.getChunk(cx + 1, cz); if (nc) this.dirtyChunks.add(this.getChunkKey(cx + 1, cz)); }
+    if (lz === 0) { const nc = this.getChunk(cx, cz - 1); if (nc) this.dirtyChunks.add(this.getChunkKey(cx, cz - 1)); }
+    if (lz === CHUNK_SIZE - 1) { const nc = this.getChunk(cx, cz + 1); if (nc) this.dirtyChunks.add(this.getChunkKey(cx, cz + 1)); }
   }
 
   getHeight(x, z) {
@@ -2106,7 +2157,7 @@ class Game {
     // Scene
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog = new THREE.Fog(0x87ceeb, 50, 90);
+    this.scene.fog = new THREE.Fog(0x87ceeb, RENDER_DISTANCE * CHUNK_SIZE * 0.5, RENDER_DISTANCE * CHUNK_SIZE);
 
     // Camera
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
@@ -2492,9 +2543,11 @@ class Game {
 
     // Generate world
     if (mode === 'adventure') {
+      this.world = new World(this.scene, this.texGen, false);
       this._initAdventureLevel(level);
     } else {
-      this.world.generate();
+      this.world = new World(this.scene, this.texGen, true);
+      // Initial chunks loaded around spawn in game loop via updateChunks
     }
 
     // Position player
@@ -2746,10 +2799,12 @@ class Game {
       this.playerPos.y += this.playerVel.y * dt;
       this.playerPos.z += this.playerVel.z * dt;
 
-      // World boundary
-      const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
-      this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
-      this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+      // World boundary (adventure mode only)
+      if (!this.world.isInfinite) {
+        const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
+        this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
+        this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+      }
       this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
 
       // Camera
@@ -2868,10 +2923,12 @@ class Game {
       );
     }
 
-    // World boundary
-    const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
-    this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
-    this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+    // World boundary (adventure mode only)
+    if (!this.world.isInfinite) {
+      const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
+      this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
+      this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+    }
 
     // Void death
     if (this.playerPos.y < -10) {
@@ -3426,6 +3483,9 @@ class Game {
     }
 
     if (!this.isDead) {
+      // Dynamic chunk loading for infinite world
+      this.world.updateChunks(this.playerPos.x, this.playerPos.z, this.scene, this.texGen);
+
       this._updateInteraction(dt);
       this._updateMobs(dt);
       this._updateDroppedItems(dt);
