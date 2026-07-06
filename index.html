@@ -1449,19 +1449,19 @@ class World {
 
     // Load missing chunks (max 2 per frame to avoid stutter)
     let loaded = 0;
-    for (let dx = -RENDER_DISTANCE; dx <= RENDER_DISTANCE && loaded < 2; dx++) {
-      for (let dz = -RENDER_DISTANCE; dz <= RENDER_DISTANCE && loaded < 2; dz++) {
-        // Prioritize closer chunks
-        const dist = Math.abs(dx) + Math.abs(dz);
-        if (dist > RENDER_DISTANCE) continue;
-        const cx = pcx + dx, cz = pcz + dz;
-        const key = this.getChunkKey(cx, cz);
-        if (!this.chunks.has(key)) {
-          const chunk = new Chunk(cx, cz, this);
-          chunk.generate(this.noise);
-          chunk.buildMesh(texGen);
-          this.chunks.set(key, chunk);
-          loaded++;
+    for (let dist = 0; dist <= RENDER_DISTANCE && loaded < 2; dist++) {
+      for (let dx = -dist; dx <= dist && loaded < 2; dx++) {
+        for (let dz = -dist; dz <= dist && loaded < 2; dz++) {
+          if (Math.abs(dx) !== dist && Math.abs(dz) !== dist) continue; // only ring at current dist
+          const cx = pcx + dx, cz = pcz + dz;
+          const key = this.getChunkKey(cx, cz);
+          if (!this.chunks.has(key)) {
+            const chunk = new Chunk(cx, cz, this);
+            chunk.generate(this.noise);
+            chunk.buildMesh(texGen);
+            this.chunks.set(key, chunk);
+            loaded++;
+          }
         }
       }
     }
@@ -2547,7 +2547,19 @@ class Game {
       this._initAdventureLevel(level);
     } else {
       this.world = new World(this.scene, this.texGen, true);
-      // Initial chunks loaded around spawn in game loop via updateChunks
+      // Pre-load initial chunks around spawn
+      const spCx = 0, spCz = 0;
+      for (let dx = -2; dx <= 2; dx++) {
+        for (let dz = -2; dz <= 2; dz++) {
+          const key = this.world.getChunkKey(spCx + dx, spCz + dz);
+          if (!this.world.chunks.has(key)) {
+            const chunk = new Chunk(spCx + dx, spCz + dz, this.world);
+            chunk.generate(this.world.noise);
+            chunk.buildMesh(this.texGen);
+            this.world.chunks.set(key, chunk);
+          }
+        }
+      }
     }
 
     // Position player
