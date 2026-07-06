@@ -168,6 +168,153 @@ canvas { display: block; }
   opacity: 0; transition: opacity 0.15s;
 }
 #damageOverlay.active { opacity: 1; }
+
+/* Game Mode Select */
+.mode-buttons { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.mode-btn {
+  padding: 14px 40px; font-size: 15px; font-family: inherit;
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+  background: rgba(94,234,212,0.12); color: #5eead4; cursor: pointer;
+  transition: all 0.15s; letter-spacing: 1px; text-align: left;
+  display: flex; align-items: center; gap: 14px;
+}
+.mode-btn:hover { background: rgba(94,234,212,0.22); border-color: rgba(94,234,212,0.4); }
+.mode-btn:active { transform: scale(0.97); }
+.mode-btn .mode-icon { font-size: 24px; width: 36px; text-align: center; }
+.mode-btn .mode-info { flex: 1; }
+.mode-btn .mode-name { font-size: 16px; font-weight: 500; }
+.mode-btn .mode-desc { font-size: 11px; color: #64748b; margin-top: 2px; }
+.mode-btn.survival { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.2); }
+.mode-btn.survival:hover { background: rgba(239,68,68,0.2); border-color: rgba(239,68,68,0.35); }
+.mode-btn.adventure { background: rgba(168,85,247,0.1); color: #c084fc; border-color: rgba(168,85,247,0.2); }
+.mode-btn.adventure:hover { background: rgba(168,85,247,0.2); border-color: rgba(168,85,247,0.35); }
+
+/* Level Select */
+#levelSelect { text-align: center; }
+#levelSelect h2 { font-size: 28px; color: #c084fc; margin-bottom: 6px; font-weight: 300; letter-spacing: 3px; }
+#levelSelect .ls-sub { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+.level-list { display: flex; flex-direction: column; gap: 8px; max-width: 360px; margin: 0 auto; }
+.level-btn {
+  padding: 16px 20px; font-size: 14px; font-family: inherit;
+  border: 1px solid rgba(168,85,247,0.2); border-radius: 8px;
+  background: rgba(168,85,247,0.08); color: #e2e8f0; cursor: pointer;
+  transition: all 0.15s; text-align: left;
+}
+.level-btn:hover { background: rgba(168,85,247,0.18); border-color: rgba(168,85,247,0.4); }
+.level-btn .lv-name { font-size: 15px; color: #c084fc; font-weight: 500; }
+.level-btn .lv-desc { font-size: 11px; color: #94a3b8; margin-top: 3px; }
+
+/* Hunger Bar */
+#hungerBar {
+  position: absolute; top: 30px; left: 50%; transform: translateX(-50%);
+  display: none; gap: 2px;
+}
+#hungerBar.visible { display: flex; }
+.hunger-icon {
+  width: 12px; height: 12px; position: relative;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+.hunger-full { color: #f59e0b; }
+.hunger-half { color: #f59e0b; }
+.hunger-empty { color: #404040; }
+.hunger-icon svg { width: 100%; height: 100%; }
+
+/* Equipment Bar */
+#equipBar {
+  position: absolute; bottom: 80px; left: 16px;
+  display: none; flex-direction: column; gap: 4px;
+}
+#equipBar.visible { display: flex; }
+.equip-slot {
+  width: 44px; height: 44px; background: rgba(0,0,0,0.55);
+  border: 2px solid rgba(255,255,255,0.08); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.equip-slot.active { border-color: #f59e0b; background: rgba(245,158,11,0.1); }
+.equip-slot .eq-label {
+  position: absolute; top: -14px; font-size: 9px; color: #94a3b8; white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+}
+.equip-slot .slot-icon { width: 24px; height: 24px; image-rendering: pixelated; }
+
+/* Wave Info */
+#waveInfo {
+  position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
+  font-size: 13px; color: #fbbf24; text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  display: none; font-weight: 500;
+}
+#waveInfo.visible { display: block; }
+
+/* Adventure HUD */
+#adventureHUD {
+  position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  text-align: center; display: none;
+}
+#adventureHUD.visible { display: block; }
+.adv-title { font-size: 14px; color: #c084fc; text-shadow: 0 1px 3px #000; font-weight: 500; }
+.adv-objective { font-size: 12px; color: #94a3b8; margin-top: 2px; text-shadow: 0 1px 2px #000; }
+.adv-timer { font-size: 22px; color: #e2e8f0; margin-top: 4px; font-family: 'Courier New', monospace; text-shadow: 0 0 8px rgba(168,85,247,0.5); }
+.adv-lives { font-size: 12px; color: #f87171; margin-top: 4px; }
+
+/* Boss HP Bar */
+#bossHPBar {
+  position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+  width: 300px; display: none; text-align: center;
+}
+#bossHPBar.visible { display: block; }
+.boss-name { font-size: 13px; color: #f87171; margin-bottom: 4px; text-shadow: 0 1px 3px #000; }
+.boss-hp-bg {
+  width: 100%; height: 10px; background: rgba(0,0,0,0.6);
+  border-radius: 5px; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;
+}
+.boss-hp-fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f87171); border-radius: 5px; transition: width 0.2s; }
+
+/* Death Screen */
+#deathScreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(120,0,0,0.65); z-index: 105;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+}
+#deathScreen.visible { display: flex; }
+#deathScreen h2 { font-size: 36px; color: #ff4444; margin-bottom: 12px; letter-spacing: 4px; }
+#deathScreen .death-sub { font-size: 14px; color: #fca5a5; }
+#deathScreen .death-timer { font-size: 48px; color: #fff; margin-top: 16px; font-family: 'Courier New', monospace; }
+
+/* Result Screen */
+#resultScreen {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.85); z-index: 110;
+  display: none; flex-direction: column; align-items: center; justify-content: center;
+}
+#resultScreen.visible { display: flex; }
+#resultScreen h2 { font-size: 32px; margin-bottom: 8px; letter-spacing: 3px; }
+#resultScreen .result-sub { font-size: 14px; color: #94a3b8; margin-bottom: 20px; }
+#resultScreen .result-time { font-size: 20px; color: #5eead4; font-family: 'Courier New', monospace; margin-bottom: 24px; }
+
+/* Eating Progress */
+#eatProgress {
+  position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%);
+  width: 120px; height: 8px; background: rgba(0,0,0,0.5);
+  border-radius: 4px; overflow: hidden; display: none;
+}
+#eatProgress.visible { display: block; }
+#eatProgress .eat-fill { height: 100%; width: 0%; background: #f59e0b; border-radius: 4px; transition: width 0.05s linear; }
+
+/* XP Popup */
+.xp-popup {
+  position: fixed; pointer-events: none; z-index: 55;
+  font-size: 12px; color: #a78bfa; font-weight: bold;
+  text-shadow: 0 1px 2px #000;
+  animation: xpFloat 1s ease-out forwards;
+}
+@keyframes xpFloat {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-30px); }
+}
+
+/* Pause mode label */
+.mode-label { font-size: 13px; color: #64748b; margin-top: 10px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
@@ -186,18 +333,77 @@ canvas { display: block; }
     <kbd>E</kbd> 背包 &nbsp;
     <kbd>C</kbd> 合成<br>
     <kbd>F3</kbd> 调试信息 &nbsp;
-    <kbd>ESC</kbd> 暂停
+    <kbd>ESC</kbd> 暂停<br>
+    <kbd>Q</kbd> 切换装备 &nbsp;
+    <kbd>双击空格</kbd> 飞行（创造）
   </div>
-  <div>
-    <button class="btn" onclick="window.game.start()">开始游戏</button>
+  <div class="mode-buttons">
+    <button class="mode-btn" onclick="window.game.startGame('creative')">
+      <div class="mode-icon">&#9992;</div>
+      <div class="mode-info">
+        <div class="mode-name">创造模式</div>
+        <div class="mode-desc">无限方块 / 飞行 / 瞬间破坏 / 无敌</div>
+      </div>
+    </button>
+    <button class="mode-btn survival" onclick="window.game.startGame('survival')">
+      <div class="mode-icon">&#9760;</div>
+      <div class="mode-info">
+        <div class="mode-name">生存模式</div>
+        <div class="mode-desc">饥饿 / 装备 / 怪物波次 / 死亡复活</div>
+      </div>
+    </button>
+    <button class="mode-btn adventure" onclick="window.game.showLevelSelect()">
+      <div class="mode-icon">&#9876;</div>
+      <div class="mode-info">
+        <div class="mode-name">冒险模式</div>
+        <div class="mode-desc">关卡挑战 / Boss战 / 目标系统</div>
+      </div>
+    </button>
   </div>
+</div>
+
+<!-- Level Select -->
+<div id="levelSelect" class="overlay hidden">
+  <h2>ADVENTURE</h2>
+  <div class="ls-sub">选择关卡</div>
+  <div class="level-list">
+    <button class="level-btn" onclick="window.game.startGame('adventure', 1)">
+      <div class="lv-name">关卡 1: 迷宫逃脱</div>
+      <div class="lv-desc">在 32x32 的迷宫中找到出口</div>
+    </button>
+    <button class="level-btn" onclick="window.game.startGame('adventure', 2)">
+      <div class="lv-name">关卡 2: 僵尸围城</div>
+      <div class="lv-desc">在封闭区域中生存 5 分钟</div>
+    </button>
+    <button class="level-btn" onclick="window.game.startGame('adventure', 3)">
+      <div class="lv-name">关卡 3: Boss战</div>
+      <div class="lv-desc">击败巨型僵尸Boss</div>
+    </button>
+  </div>
+  <button class="btn secondary" style="margin-top:16px;" onclick="window.game.hideLevelSelect()">返回</button>
 </div>
 
 <!-- Pause Menu -->
 <div id="pauseMenu" class="overlay hidden">
   <h2>已暂停</h2>
+  <div class="mode-label" id="pauseModeLabel"></div>
   <button class="btn" onclick="window.game.resume()">继续</button>
   <button class="btn secondary" onclick="window.game.quit()">退出</button>
+</div>
+
+<!-- Death Screen -->
+<div id="deathScreen">
+  <h2>你死了!</h2>
+  <div class="death-sub">即将复活...</div>
+  <div class="death-timer" id="deathTimer">5</div>
+</div>
+
+<!-- Result Screen -->
+<div id="resultScreen">
+  <h2 id="resultTitle">通关!</h2>
+  <div class="result-sub" id="resultSub"></div>
+  <div class="result-time" id="resultTime"></div>
+  <button class="btn" onclick="window.game.quit()">返回主菜单</button>
 </div>
 
 <!-- Craft UI -->
@@ -222,8 +428,26 @@ canvas { display: block; }
 <div id="hud" class="hidden">
   <div id="crosshair"></div>
   <div id="healthBar"></div>
+  <div id="hungerBar"></div>
   <div id="hotbar"></div>
+  <div id="equipBar">
+    <div class="equip-slot" id="eqSlot0"><span class="eq-label">武器</span></div>
+    <div class="equip-slot" id="eqSlot1"><span class="eq-label">盔甲</span></div>
+    <div class="equip-slot" id="eqSlot2"><span class="eq-label">工具</span></div>
+  </div>
+  <div id="waveInfo"></div>
+  <div id="adventureHUD">
+    <div class="adv-title" id="advTitle"></div>
+    <div class="adv-objective" id="advObjective"></div>
+    <div class="adv-timer" id="advTimer"></div>
+    <div class="adv-lives" id="advLives"></div>
+  </div>
+  <div id="bossHPBar">
+    <div class="boss-name" id="bossName">Boss</div>
+    <div class="boss-hp-bg"><div class="boss-hp-fill" id="bossHPFill"></div></div>
+  </div>
   <div id="debugInfo"></div>
+  <div id="eatProgress"><div class="eat-fill" id="eatFill"></div></div>
 </div>
 <div id="damageOverlay"></div>
 
@@ -255,7 +479,11 @@ const BLOCK = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LEAVES: 5,
   SAND: 6, COAL_ORE: 7, IRON_ORE: 8, GOLD_ORE: 9, DIAMOND_ORE: 10,
   PLANKS: 11, STONE_BRICK: 12, GLASS: 13, WATER: 14,
-  RED_FLOWER: 15, YELLOW_FLOWER: 16, BEDROCK: 17
+  RED_FLOWER: 15, YELLOW_FLOWER: 16, BEDROCK: 17,
+  // New blocks/items
+  RAW_PORK: 18, COOKED_PORK: 19,
+  WOOD_PICKAXE: 21, STONE_PICKAXE: 22, IRON_SWORD: 23, WOOD_STICK: 24,
+  GLOWSTONE: 25, LIGHT_BLOCK: 26,
 };
 
 const BLOCK_DATA = {
@@ -276,6 +504,15 @@ const BLOCK_DATA = {
   [BLOCK.RED_FLOWER]:   { name: '红花',   solid: false, transparent: true },
   [BLOCK.YELLOW_FLOWER]:{ name: '黄花',   solid: false, transparent: true },
   [BLOCK.BEDROCK]:      { name: '基岩',   solid: true, transparent: false },
+  // New blocks/items
+  [BLOCK.RAW_PORK]:     { name: '生猪肉', solid: false, transparent: true, isFood: true, hunger: 2 },
+  [BLOCK.COOKED_PORK]:   { name: '熟猪肉', solid: false, transparent: true, isFood: true, hunger: 8 },
+  [BLOCK.WOOD_PICKAXE]:  { name: '木镐',   solid: false, transparent: true, isTool: true, toolType: 'pickaxe', toolSpeed: 2 },
+  [BLOCK.STONE_PICKAXE]: { name: '石镐',   solid: false, transparent: true, isTool: true, toolType: 'pickaxe', toolSpeed: 3 },
+  [BLOCK.IRON_SWORD]:    { name: '铁剑',   solid: false, transparent: true, isWeapon: true, damage: 9 },
+  [BLOCK.WOOD_STICK]:    { name: '木棍',   solid: false, transparent: true },
+  [BLOCK.GLOWSTONE]:     { name: '荧石',   solid: true, transparent: false, emissive: true },
+  [BLOCK.LIGHT_BLOCK]:   { name: '光源方块', solid: true, transparent: false, emissive: true },
 };
 
 // Face definitions: [axis, dir, corners(4x vertex positions)]
@@ -295,6 +532,12 @@ const RECIPES = [
   { input: [[BLOCK.STONE, 4]], output: [[BLOCK.STONE_BRICK, 4]], name: '石砖 x4' },
   { input: [[BLOCK.SAND, 4]], output: [[BLOCK.GLASS, 4]], name: '玻璃 x4' },
   { input: [[BLOCK.PLANKS, 4]], output: [[BLOCK.WOOD, 1]], name: '木头 x1' },
+  // Survival recipes
+  { input: [[BLOCK.PLANKS, 2]], output: [[BLOCK.WOOD_STICK, 4]], name: '木棍 x4' },
+  { input: [[BLOCK.PLANKS, 3]], output: [[BLOCK.WOOD_PICKAXE, 1]], name: '木镐 x1' },
+  { input: [[BLOCK.STONE, 3], [BLOCK.WOOD_STICK, 2]], output: [[BLOCK.STONE_PICKAXE, 1]], name: '石镐 x1' },
+  { input: [[BLOCK.IRON_ORE, 3]], output: [[BLOCK.IRON_SWORD, 1]], name: '铁剑 x1' },
+  { input: [[BLOCK.RAW_PORK, 1], [BLOCK.COAL_ORE, 1]], output: [[BLOCK.COOKED_PORK, 1]], name: '烤肉 x1' },
 ];
 
 // ============================================================
@@ -814,6 +1057,16 @@ class TextureGenerator {
       this.blockIcons[bid] = texMap[bid].top;
     }
 
+    // Generate item icons for non-block items
+    this.blockIcons[BLOCK.RAW_PORK] = this._makeItemIcon(0xf0a0a0, 0xd08080);
+    this.blockIcons[BLOCK.COOKED_PORK] = this._makeItemIcon(0xc08060, 0xa06040);
+    this.blockIcons[BLOCK.WOOD_PICKAXE] = this._makeToolIcon(0xbc9862, 0x8b6914, 'pick');
+    this.blockIcons[BLOCK.STONE_PICKAXE] = this._makeToolIcon(0x808080, 0x6b4820, 'pick');
+    this.blockIcons[BLOCK.IRON_SWORD] = this._makeToolIcon(0xd4d4d4, 0x8b6914, 'sword');
+    this.blockIcons[BLOCK.WOOD_STICK] = this._makeItemIcon(0x8b6914, 0x6b4820);
+    this.blockIcons[BLOCK.GLOWSTONE] = this._makeItemIcon(0xffe0a0, 0xffcc66);
+    this.blockIcons[BLOCK.LIGHT_BLOCK] = this._makeItemIcon(0xffffff, 0xffee88);
+
     return { opaqueTexture: this.opaqueAtlasTexture, transparentTexture: this.transparentAtlasTexture };
   }
 
@@ -829,6 +1082,46 @@ class TextureGenerator {
 
   isTransparent(blockId) {
     return BLOCK_DATA[blockId]?.transparent === true;
+  }
+
+  _makeItemIcon(color1, color2) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const ctx = c.getContext('2d');
+    const r1 = (color1 >> 16) & 0xff, g1 = (color1 >> 8) & 0xff, b1 = color1 & 0xff;
+    const r2 = (color2 >> 16) & 0xff, g2 = (color2 >> 8) & 0xff, b2 = color2 & 0xff;
+    for (let x = 0; x < 16; x++) for (let y = 0; y < 16; y++) {
+      const t = (Math.random() * 0.3) | 0;
+      ctx.fillStyle = `rgb(${r1 - t * 10},${g1 - t * 10},${b1 - t * 10})`;
+      ctx.fillRect(x, y, 1, 1);
+    }
+    // border
+    ctx.strokeStyle = `rgb(${r2},${g2},${b2})`;
+    ctx.strokeRect(2, 2, 12, 12);
+    return c;
+  }
+
+  _makeToolIcon(headColor, handleColor, type) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const ctx = c.getContext('2d');
+    const hr = (headColor >> 16) & 0xff, hg = (headColor >> 8) & 0xff, hb = headColor & 0xff;
+    const sr = (handleColor >> 16) & 0xff, sg = (handleColor >> 8) & 0xff, sb = handleColor & 0xff;
+    // Handle (diagonal)
+    for (let i = 0; i < 10; i++) {
+      ctx.fillStyle = `rgb(${sr},${sg},${sb})`;
+      ctx.fillRect(8 + i, 14 - i, 2, 2);
+    }
+    // Head
+    ctx.fillStyle = `rgb(${hr},${hg},${hb})`;
+    if (type === 'pick') {
+      ctx.fillRect(2, 2, 6, 3);
+      ctx.fillRect(4, 5, 4, 2);
+    } else {
+      ctx.fillRect(5, 1, 3, 8);
+      ctx.fillRect(3, 3, 7, 3);
+    }
+    return c;
   }
 }
 
@@ -1729,9 +2022,44 @@ class Game {
     this.health = 20;
     this.maxHealth = 20;
 
+    // Game mode system
+    this.gameMode = 'creative'; // 'creative' | 'survival' | 'adventure'
+    this.adventureLevel = 0;
+    this.isFlying = false;
+    this.isDead = false;
+    this.deathTimer = 0;
+    this.spawnPos = new THREE.Vector3(0, 40, 0);
+
+    // Survival mode
+    this.hunger = 20;
+    this.maxHunger = 20;
+    this.equipment = [null, null, null]; // [weapon, armor, tool]
+    this.equipIdx = 0;
+    this.waveNumber = 0;
+    this.waveTimer = 0;
+    this.waveSpawned = false;
+    this.xp = 0;
+    this.eatingProgress = 0;
+    this.isEating = false;
+    this.foodHeld = false;
+    this.survivalDamageCooldown = 0;
+
+    // Adventure mode
+    this.advTimer = 0;
+    this.advObjective = '';
+    this.advTitle = '';
+    this.advLives = 3;
+    this.advActive = false;
+    this.advStartTime = 0;
+    this.bossMob = null;
+    this.bossDefeated = false;
+    this.mazeStart = null;
+    this.mazeEnd = null;
+
     this.keys = {};
     this.mouse = { left: false, right: false };
     this.isRunning = false;
+    this.lastSpacePress = 0; // for double-tap fly
 
     this.inventory = {};
     this.hotbar = new Array(9).fill(null);
@@ -1811,15 +2139,7 @@ class Game {
     // World
     this.world = new World(this.scene, this.texGen);
 
-    // Default inventory
-    this._addBlock(BLOCK.DIRT, 64);
-    this._addBlock(BLOCK.STONE, 64);
-    this._addBlock(BLOCK.WOOD, 64);
-    this._addBlock(BLOCK.PLANKS, 32);
-    this._addBlock(BLOCK.GLASS, 32);
-    this._addBlock(BLOCK.SAND, 32);
-    this._addBlock(BLOCK.STONE_BRICK, 32);
-
+    // Default inventory (set per mode in startGame)
     // Setup hotbar
     this._syncHotbar();
 
@@ -1936,21 +2256,48 @@ class Game {
         this.hotbarIdx = parseInt(e.code.charAt(5)) - 1;
         this._updateHotbarUI();
       }
+
+      // Q - cycle equipment in survival mode
+      if (e.code === 'KeyQ' && this.gameMode === 'survival') {
+        this.equipIdx = (this.equipIdx + 1) % 3;
+        this._updateEquipUI();
+      }
+
+      // Double-tap space for fly toggle (creative mode)
+      if (e.code === 'Space' && this.gameMode === 'creative') {
+        const now = performance.now();
+        if (now - this.lastSpacePress < 300) {
+          this.isFlying = !this.isFlying;
+          this.onGround = false;
+        }
+        this.lastSpacePress = now;
+      }
     });
 
     document.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
+      // Stop eating on right key release
+      if (e.code === 'ShiftRight' || e.code === 'ControlRight') {
+        this.isEating = false;
+        this.eatingProgress = 0;
+        document.getElementById('eatProgress').classList.remove('visible');
+      }
     });
 
     this.renderer.domElement.addEventListener('mousedown', (e) => {
-      if (!this.isPlaying || this.isInventoryOpen || this.isCraftOpen) return;
+      if (!this.isPlaying || this.isInventoryOpen || this.isCraftOpen || this.isDead) return;
       if (e.button === 0) this.mouse.left = true;
       if (e.button === 2) this.mouse.right = true;
     });
 
     this.renderer.domElement.addEventListener('mouseup', (e) => {
       if (e.button === 0) { this.mouse.left = false; this.breakProgress = 0; this.breakTarget = null; }
-      if (e.button === 2) this.mouse.right = false;
+      if (e.button === 2) {
+        this.mouse.right = false;
+        this.isEating = false;
+        this.eatingProgress = 0;
+        document.getElementById('eatProgress').classList.remove('visible');
+      }
     });
 
     this.renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -1965,6 +2312,8 @@ class Game {
   _initHUD() {
     this._updateHealthUI();
     this._updateHotbarUI();
+    this._updateHungerUI();
+    this._updateEquipUI();
   }
 
   _updateHealthUI() {
@@ -1987,6 +2336,7 @@ class Game {
       const active = i === this.hotbarIdx ? ' active' : '';
       const name = blockId != null ? BLOCK_DATA[blockId]?.name || '' : '';
       const count = blockId != null ? (this.inventory[blockId] || 0) : 0;
+      const displayCount = this.gameMode === 'creative' ? '' : (count > 0 ? count : '');
       let iconHtml = '';
       if (blockId != null && this.texGen.blockIcons[blockId]) {
         const canvas = this.texGen.blockIcons[blockId];
@@ -1995,7 +2345,7 @@ class Game {
       html += `<div class="hotbar-slot${active}">
         <span class="slot-name">${name}</span>
         ${iconHtml}
-        ${count > 0 ? `<span class="slot-count">${count}</span>` : ''}
+        ${displayCount ? `<span class="slot-count">${displayCount}</span>` : ''}
       </div>`;
     }
     bar.innerHTML = html;
@@ -2015,61 +2365,177 @@ class Game {
     if (!this.showDebug) return;
     const el = document.getElementById('debugInfo');
     const pos = this.playerPos;
+    const modeNames = { creative: '创造', survival: '生存', adventure: '冒险' };
     el.innerHTML = `
       XYZ: ${pos.x.toFixed(1)} / ${pos.y.toFixed(1)} / ${pos.z.toFixed(1)}<br>
       Chunk: ${Math.floor(pos.x/CHUNK_SIZE)}, ${Math.floor(pos.z/CHUNK_SIZE)}<br>
-      Ground: ${this.onGround ? 'Yes' : 'No'}<br>
-      Day: ${(this.dayTime * 100).toFixed(1)}%<br>
+      Ground: ${this.onGround ? 'Yes' : 'No'} | Fly: ${this.isFlying ? 'Yes' : 'No'}<br>
+      Day: ${(this.dayTime * 100).toFixed(1)}% | Mode: ${modeNames[this.gameMode]}<br>
       Mobs: ${this.mobs.length}<br>
       FPS: ${this._fpsValue.toFixed(0)}
     `;
   }
 
-  start() {
+  _updateHungerUI() {
+    const bar = document.getElementById('hungerBar');
+    if (this.gameMode !== 'survival') return;
+    let html = '';
+    for (let i = 0; i < 10; i++) {
+      const h = this.hunger - i * 2;
+      if (h >= 2) html += '<div class="hunger-icon hunger-full"><svg viewBox="0 0 16 16"><path d="M3 2c1-1 3-1 4 1s3-2 4-1c2 1 2 4 0 6-1 1-2 3-4 5-2-2-3-4-4-5-2-2-2-5 0-6z" fill="currentColor"/></svg></div>';
+      else if (h === 1) html += '<div class="hunger-icon hunger-half"><svg viewBox="0 0 16 16"><path d="M3 2c1-1 3-1 4 1s3-2 4-1c2 1 2 4 0 6-1 1-2 3-4 5-2-2-3-4-4-5-2-2-2-5 0-6z" fill="currentColor" opacity="0.5"/></svg></div>';
+      else html += '<div class="hunger-icon hunger-empty"><svg viewBox="0 0 16 16"><path d="M3 2c1-1 3-1 4 1s3-2 4-1c2 1 2 4 0 6-1 1-2 3-4 5-2-2-3-4-4-5-2-2-2-5 0-6z" fill="currentColor" opacity="0.2"/></svg></div>';
+    }
+    bar.innerHTML = html;
+  }
+
+  _updateEquipUI() {
+    if (this.gameMode !== 'survival') return;
+    const labels = ['武器', '盔甲', '工具'];
+    for (let i = 0; i < 3; i++) {
+      const slot = document.getElementById('eqSlot' + i);
+      slot.classList.toggle('active', i === this.equipIdx);
+      // Remove old icon
+      const oldIcon = slot.querySelector('.slot-icon');
+      if (oldIcon) oldIcon.remove();
+      const bid = this.equipment[i];
+      if (bid != null && this.texGen.blockIcons[bid]) {
+        const canvas = document.createElement('canvas');
+        canvas.className = 'slot-icon';
+        canvas.width = 16; canvas.height = 16;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(this.texGen.blockIcons[bid], 0, 0);
+        slot.appendChild(canvas);
+      }
+    }
+  }
+
+  showLevelSelect() {
     document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('levelSelect').classList.remove('hidden');
+  }
+
+  hideLevelSelect() {
+    document.getElementById('levelSelect').classList.add('hidden');
+    document.getElementById('startScreen').classList.remove('hidden');
+  }
+
+  startGame(mode, level = 0) {
+    this.gameMode = mode;
+    this.adventureLevel = level;
+    document.getElementById('startScreen').classList.add('hidden');
+    document.getElementById('levelSelect').classList.add('hidden');
     document.getElementById('hud').classList.remove('hidden');
     this.sound.init();
 
-    // Try load save
-    const saveData = this.save.load();
-    if (saveData) {
-      // Apply save
-      this.playerPos.set(saveData.player.x, saveData.player.y, saveData.player.z);
-      this.controls.euler.set(saveData.player.pitch, saveData.player.yaw, 0, 'YXZ');
-      this.camera.quaternion.setFromEuler(this.controls.euler);
-      this.health = saveData.player.health;
-      if (saveData.inventory) this.inventory = saveData.inventory;
-      if (saveData.hotbar) this.hotbar = saveData.hotbar;
-      if (saveData.hotbarIdx != null) this.hotbarIdx = saveData.hotbarIdx;
+    // Show/hide mode-specific HUD
+    const showSurvHUD = mode === 'survival';
+    document.getElementById('hungerBar').classList.toggle('visible', showSurvHUD);
+    document.getElementById('equipBar').classList.toggle('visible', showSurvHUD);
+    document.getElementById('waveInfo').classList.toggle('visible', false);
+    document.getElementById('adventureHUD').classList.toggle('visible', mode === 'adventure');
+    document.getElementById('bossHPBar').classList.toggle('visible', false);
+    document.getElementById('deathScreen').classList.remove('visible');
+    document.getElementById('resultScreen').classList.remove('visible');
+
+    // Creative: always show debug info
+    if (mode === 'creative') {
+      this.showDebug = true;
+      document.getElementById('debugInfo').classList.add('visible');
+    } else {
+      this.showDebug = false;
+      document.getElementById('debugInfo').classList.remove('visible');
     }
+
+    // Reset state
+    this.isFlying = (mode === 'creative') ? false : false;
+    this.isDead = false;
+    this.deathTimer = 0;
+    this.health = 20;
+    this.hunger = 20;
+    this.equipment = [null, null, null];
+    this.equipIdx = 0;
+    this.waveNumber = 0;
+    this.waveTimer = 0;
+    this.xp = 0;
+    this.eatingProgress = 0;
+    this.isEating = false;
+    this.advActive = false;
+    this.advTimer = 0;
+    this.bossMob = null;
+    this.bossDefeated = false;
+    this.mobs = [];
+    this.droppedItems = [];
+    this.mobSpawnTimer = 0;
+
+    // Reset inventory
+    this.inventory = {};
+    this.hotbar = new Array(9).fill(null);
+    this.hotbarIdx = 0;
+
+    if (mode === 'creative') {
+      // Creative: all blocks available
+      const allBlocks = [BLOCK.GRASS, BLOCK.DIRT, BLOCK.STONE, BLOCK.WOOD, BLOCK.LEAVES,
+        BLOCK.SAND, BLOCK.PLANKS, BLOCK.STONE_BRICK, BLOCK.GLASS, BLOCK.COAL_ORE,
+        BLOCK.IRON_ORE, BLOCK.GOLD_ORE, BLOCK.DIAMOND_ORE, BLOCK.GLOWSTONE, BLOCK.LIGHT_BLOCK,
+        BLOCK.RED_FLOWER, BLOCK.YELLOW_FLOWER];
+      for (const b of allBlocks) this._addBlock(b, 999);
+      this._syncHotbar();
+    } else if (mode === 'survival') {
+      this._addBlock(BLOCK.DIRT, 32);
+      this._addBlock(BLOCK.PLANKS, 16);
+      this._addBlock(BLOCK.RAW_PORK, 5);
+      this._syncHotbar();
+    }
+    // Adventure mode inventory set per level
 
     // Generate world
-    this.world.generate();
+    if (mode === 'adventure') {
+      this._initAdventureLevel(level);
+    } else {
+      this.world.generate();
+    }
 
     // Position player
-    if (!saveData) {
-      const spawn = this.world.findSpawnPos();
-      this.playerPos.copy(spawn);
-    }
+    const spawn = this.world.findSpawnPos();
+    this.playerPos.copy(spawn);
+    this.spawnPos.copy(spawn);
     this.camera.position.copy(this.playerPos);
+    this.playerVel.set(0, 0, 0);
 
-    // Spawn initial mobs
-    this._spawnInitialMobs();
+    // Spawn initial mobs (not in adventure)
+    if (mode !== 'adventure') {
+      this._spawnInitialMobs();
+    }
 
     // Lock pointer
     this.controls.lock();
     this.isPlaying = true;
     this.clock.start();
 
+    // Update HUD
+    this._updateHealthUI();
+    this._updateHotbarUI();
+    this._updateHungerUI();
+    this._updateEquipUI();
+
     // Start loop
     this._loop();
+  }
+
+  start() {
+    // Legacy: start as creative
+    this.startGame('creative');
   }
 
   pause() {
     this.isPlaying = false;
     this.controls.unlock();
+    const modeNames = { creative: '创造模式', survival: '生存模式', adventure: '冒险模式' };
+    document.getElementById('pauseModeLabel').textContent = modeNames[this.gameMode] || '';
     document.getElementById('pauseMenu').classList.remove('hidden');
-    this.save.save(this);
+    if (this.gameMode !== 'adventure') this.save.save(this);
   }
 
   resume() {
@@ -2081,10 +2547,29 @@ class Game {
 
   quit() {
     this.isPlaying = false;
-    this.save.save(this);
+    this.controls.unlock();
+    // Clean up adventure stuff
+    this.advActive = false;
+    this.bossMob = null;
     document.getElementById('pauseMenu').classList.add('hidden');
     document.getElementById('hud').classList.add('hidden');
+    document.getElementById('deathScreen').classList.remove('visible');
+    document.getElementById('resultScreen').classList.remove('visible');
+    document.getElementById('adventureHUD').classList.remove('visible');
+    document.getElementById('bossHPBar').classList.remove('visible');
+    document.getElementById('hungerBar').classList.remove('visible');
+    document.getElementById('equipBar').classList.remove('visible');
+    document.getElementById('waveInfo').classList.remove('visible');
     document.getElementById('startScreen').classList.remove('hidden');
+    // Dispose old world and recreate
+    if (this.world) {
+      for (const chunk of this.world.chunks.values()) chunk.dispose();
+      this.world.chunks.clear();
+    }
+    this.mobs.forEach(m => m.dispose(this.scene));
+    this.mobs = [];
+    this.droppedItems.forEach(d => d.dispose(this.scene));
+    this.droppedItems = [];
   }
 
   openInventory() {
@@ -2222,19 +2707,56 @@ class Game {
   _updatePhysics(dt) {
     dt = Math.min(dt, 0.05); // cap to prevent tunneling
 
+    if (this.isDead) return;
+
     const forward = new THREE.Vector3();
     this.camera.getWorldDirection(forward);
     forward.y = 0; forward.normalize();
     const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
     // Input
-    let inputX = 0, inputZ = 0;
+    let inputX = 0, inputZ = 0, inputY = 0;
     if (this.keys['KeyW']) inputZ += 1;
     if (this.keys['KeyS']) inputZ -= 1;
     if (this.keys['KeyA']) inputX -= 1;
     if (this.keys['KeyD']) inputX += 1;
     const inputLen = Math.sqrt(inputX * inputX + inputZ * inputZ);
     if (inputLen > 0) { inputX /= inputLen; inputZ /= inputLen; }
+
+    // Creative flying: full 3D movement
+    if (this.isFlying && this.gameMode === 'creative') {
+      const flyDir = new THREE.Vector3();
+      this.camera.getWorldDirection(flyDir);
+      const flyForward = new THREE.Vector3(flyDir.x, 0, flyDir.z).normalize();
+      const flyRight = new THREE.Vector3().crossVectors(flyForward, new THREE.Vector3(0, 1, 0)).normalize();
+
+      const flySpeed = MOVE_SPEED * 2;
+      const targetVx = (flyForward.x * inputZ + flyRight.x * inputX) * flySpeed;
+      const targetVz = (flyForward.z * inputZ + flyRight.z * inputX) * flySpeed;
+      let targetVy = 0;
+      if (this.keys['Space']) targetVy = flySpeed;
+      if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) targetVy = -flySpeed;
+
+      this.playerVel.x += (targetVx - this.playerVel.x) * Math.min(1, 8 * dt);
+      this.playerVel.y += (targetVy - this.playerVel.y) * Math.min(1, 8 * dt);
+      this.playerVel.z += (targetVz - this.playerVel.z) * Math.min(1, 8 * dt);
+
+      // Direct position update for flying (no collision)
+      this.playerPos.x += this.playerVel.x * dt;
+      this.playerPos.y += this.playerVel.y * dt;
+      this.playerPos.z += this.playerVel.z * dt;
+
+      // World boundary
+      const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
+      this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
+      this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+      this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
+
+      // Camera
+      const bobOffset = Math.sin(this.headBob) * 0.06;
+      this.camera.position.set(this.playerPos.x, this.playerPos.y + 1.6 + bobOffset, this.playerPos.z);
+      return;
+    }
 
     const speed = MOVE_SPEED;
     const targetVx = (forward.x * inputZ + right.x * inputX) * speed;
@@ -2249,9 +2771,13 @@ class Game {
     if (this.keys['Space'] && this.onGround) {
       this.playerVel.y = JUMP_VEL;
       this.onGround = false;
+      // Survival: hunger cost for jumping
+      if (this.gameMode === 'survival') {
+        this.hunger = Math.max(0, this.hunger - 0.2);
+      }
     }
 
-    // Gravity
+    // Gravity (not in creative flying)
     this.playerVel.y += GRAVITY * dt;
 
     // Step-up height
@@ -2318,6 +2844,13 @@ class Game {
         if (!this.onGround) {
           this.landSquash = 1;
           this.headBobVel = -0.5;
+          // Fall damage (not in creative)
+          if (this.gameMode !== 'creative') {
+            const fallSpeed = Math.abs(this.playerVel.y);
+            if (fallSpeed > 15) {
+              this.takeDamage(Math.floor((fallSpeed - 15) * 0.5));
+            }
+          }
         }
         this.onGround = true;
         this.playerVel.y = 0;
@@ -2369,7 +2902,7 @@ class Game {
   }
 
   _updateInteraction(dt) {
-    if (this.isInventoryOpen || this.isCraftOpen) return;
+    if (this.isInventoryOpen || this.isCraftOpen || this.isDead) return;
 
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
@@ -2385,19 +2918,41 @@ class Game {
           this.breakTarget = { x: hit.x, y: hit.y, z: hit.z };
           this.breakProgress = 0;
         }
-        this.breakProgress += dt * 2; // 0.5 second to break
-        if (this.breakProgress >= 1) {
+
+        // Creative: instant break
+        if (this.gameMode === 'creative') {
           if (hit.block !== BLOCK.BEDROCK) {
-            // Particles
             const color = this._getBlockThreeColor(hit.block);
             this.particles.emit(hit.x, hit.y, hit.z, color, 6);
-            // Drop item
-            this.droppedItems.push(new DroppedItem(this.scene, hit.block, hit.x, hit.y, hit.z));
             this.world.setBlock(hit.x, hit.y, hit.z, BLOCK.AIR);
             this.sound.play('break');
           }
           this.breakProgress = 0;
           this.breakTarget = null;
+        } else {
+          // Survival: tool speed affects break time
+          let breakSpeed = 2;
+          const heldItem = this.hotbar[this.hotbarIdx];
+          if (heldItem && BLOCK_DATA[heldItem]?.isTool) {
+            const ts = BLOCK_DATA[heldItem].toolSpeed || 1;
+            // Apply tool speed for appropriate blocks
+            if (hit.block === BLOCK.STONE || hit.block === BLOCK.COAL_ORE ||
+                hit.block === BLOCK.IRON_ORE || hit.block === BLOCK.GOLD_ORE || hit.block === BLOCK.DIAMOND_ORE) {
+              breakSpeed *= ts;
+            }
+          }
+          this.breakProgress += dt * breakSpeed;
+          if (this.breakProgress >= 1) {
+            if (hit.block !== BLOCK.BEDROCK) {
+              const color = this._getBlockThreeColor(hit.block);
+              this.particles.emit(hit.x, hit.y, hit.z, color, 6);
+              this.droppedItems.push(new DroppedItem(this.scene, hit.block, hit.x, hit.y, hit.z));
+              this.world.setBlock(hit.x, hit.y, hit.z, BLOCK.AIR);
+              this.sound.play('break');
+            }
+            this.breakProgress = 0;
+            this.breakTarget = null;
+          }
         }
       }
     } else {
@@ -2406,30 +2961,68 @@ class Game {
       this.breakProgress = 0;
     }
 
-    // Right click - place
-    if (this.mouse.right && hit) {
-      this.mouse.right = false; // one-time place
-      const [nx, ny, nz] = getFaceNormal(hit.face);
-      const px = hit.x + nx, py = hit.y + ny, pz = hit.z + nz;
-
-      // Don't place inside player
-      const playerBox = {
-        minX: this.playerPos.x - 0.3, maxX: this.playerPos.x + 0.3,
-        minY: this.playerPos.y, maxY: this.playerPos.y + 1.8,
-        minZ: this.playerPos.z - 0.3, maxZ: this.playerPos.z + 0.3,
-      };
-      const blockBox = { minX: px, maxX: px + 1, minY: py, maxY: py + 1, minZ: pz, maxZ: pz + 1 };
-      if (playerBox.maxX > blockBox.minX && playerBox.minX < blockBox.maxX &&
-          playerBox.maxY > blockBox.minY && playerBox.minY < blockBox.maxY &&
-          playerBox.maxZ > blockBox.minZ && playerBox.minZ < blockBox.maxZ) return;
-
+    // Right click - place / eat food
+    if (this.mouse.right) {
       const selectedBlock = this.hotbar[this.hotbarIdx];
-      if (selectedBlock != null && this.inventory[selectedBlock] > 0) {
-        if (this.world.getBlock(px, py, pz) === BLOCK.AIR || this.world.getBlock(px, py, pz) === BLOCK.WATER) {
-          this.world.setBlock(px, py, pz, selectedBlock);
+
+      // Check if holding food (survival mode)
+      if (this.gameMode === 'survival' && selectedBlock != null && BLOCK_DATA[selectedBlock]?.isFood) {
+        this.isEating = true;
+        this.eatingProgress += dt;
+        const ep = document.getElementById('eatProgress');
+        ep.classList.add('visible');
+        document.getElementById('eatFill').style.width = (this.eatingProgress / 2 * 100) + '%';
+
+        if (this.eatingProgress >= 2) {
+          // Eat the food
+          const foodData = BLOCK_DATA[selectedBlock];
+          this.hunger = Math.min(this.maxHunger, this.hunger + (foodData.hunger || 2));
           this._removeBlock(selectedBlock, 1);
+          this._syncHotbar();
           this._updateHotbarUI();
-          this.sound.play('place');
+          this._updateHungerUI();
+          this.sound.play('hit');
+          this.isEating = false;
+          this.eatingProgress = 0;
+          this.mouse.right = false;
+          ep.classList.remove('visible');
+        }
+        return; // Don't place while eating
+      }
+
+      if (hit) {
+        this.mouse.right = false; // one-time place
+        const [nx, ny, nz] = getFaceNormal(hit.face);
+        const px = hit.x + nx, py = hit.y + ny, pz = hit.z + nz;
+
+        // Don't place inside player
+        const playerBox = {
+          minX: this.playerPos.x - 0.3, maxX: this.playerPos.x + 0.3,
+          minY: this.playerPos.y, maxY: this.playerPos.y + 1.8,
+          minZ: this.playerPos.z - 0.3, maxZ: this.playerPos.z + 0.3,
+        };
+        const blockBox = { minX: px, maxX: px + 1, minY: py, maxY: py + 1, minZ: pz, maxZ: pz + 1 };
+        if (playerBox.maxX > blockBox.minX && playerBox.minX < blockBox.maxX &&
+            playerBox.maxY > blockBox.minY && playerBox.minY < blockBox.maxY &&
+            playerBox.maxZ > blockBox.minZ && playerBox.minZ < blockBox.maxZ) return;
+
+        // Creative: infinite blocks
+        if (this.gameMode === 'creative') {
+          if (selectedBlock != null) {
+            if (this.world.getBlock(px, py, pz) === BLOCK.AIR || this.world.getBlock(px, py, pz) === BLOCK.WATER) {
+              this.world.setBlock(px, py, pz, selectedBlock);
+              this.sound.play('place');
+            }
+          }
+        } else {
+          if (selectedBlock != null && this.inventory[selectedBlock] > 0) {
+            if (this.world.getBlock(px, py, pz) === BLOCK.AIR || this.world.getBlock(px, py, pz) === BLOCK.WATER) {
+              this.world.setBlock(px, py, pz, selectedBlock);
+              this._removeBlock(selectedBlock, 1);
+              this._updateHotbarUI();
+              this.sound.play('place');
+            }
+          }
         }
       }
     }
@@ -2447,32 +3040,76 @@ class Game {
   }
 
   _updateMobs(dt) {
-    // Spawn timer
+    if (this.isDead) return;
+
+    // Adventure mode: update boss
+    if (this.gameMode === 'adventure' && this.bossMob) {
+      this._updateBoss(dt);
+    }
+
+    // Survival mode: wave system at night
+    if (this.gameMode === 'survival') {
+      const isNight = this.dayTime < 0.25 || this.dayTime > 0.75;
+      if (!isNight) {
+        this.waveNumber = 0;
+        this.waveTimer = 0;
+        document.getElementById('waveInfo').classList.remove('visible');
+      } else {
+        this.waveTimer += dt;
+        if (this.waveTimer >= 30) {
+          this.waveTimer = 0;
+          this.waveNumber++;
+          this._spawnWave(this.waveNumber);
+          document.getElementById('waveInfo').textContent = '波次 ' + this.waveNumber;
+          document.getElementById('waveInfo').classList.add('visible');
+        }
+      }
+    }
+
+    // Default spawn timer (creative / survival non-wave)
     this.mobSpawnTimer += dt;
-    if (this.mobSpawnTimer > 10 && this.mobs.length < 20) {
+    if (this.mobSpawnTimer > 10 && this.mobs.length < 20 && this.gameMode !== 'adventure') {
       this.mobSpawnTimer = 0;
       const isNight = this.dayTime < 0.25 || this.dayTime > 0.75;
-      if (isNight) {
-        // Spawn hostile mob
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 20 + Math.random() * 20;
-        const x = this.playerPos.x + Math.cos(angle) * dist;
-        const z = this.playerPos.z + Math.sin(angle) * dist;
-        const y = this.world.getHeight(Math.floor(x), Math.floor(z));
-        if (y > SEA_LEVEL) {
-          const type = Math.random() < 0.5 ? 'zombie' : 'skeleton';
-          this.mobs.push(new Mob(this.scene, type, x, y, z));
+      if (this.gameMode === 'survival') {
+        // In survival, only spawn passive mobs during day
+        if (!isNight && this.mobs.filter(m => m.type !== 'zombie' && m.type !== 'skeleton').length < 8) {
+          const types = ['pig', 'chicken', 'cow', 'sheep'];
+          const type = types[(Math.random() * types.length) | 0];
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 15 + Math.random() * 25;
+          const x = this.playerPos.x + Math.cos(angle) * dist;
+          const z = this.playerPos.z + Math.sin(angle) * dist;
+          const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+          if (y > SEA_LEVEL) {
+            const mob = new Mob(this.scene, type, x, y, z);
+            this.mobs.push(mob);
+          }
         }
-      } else if (this.mobs.filter(m => m.type !== 'zombie' && m.type !== 'skeleton').length < 8) {
-        const types = ['pig', 'chicken', 'cow', 'sheep'];
-        const type = types[(Math.random() * types.length) | 0];
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 15 + Math.random() * 25;
-        const x = this.playerPos.x + Math.cos(angle) * dist;
-        const z = this.playerPos.z + Math.sin(angle) * dist;
-        const y = this.world.getHeight(Math.floor(x), Math.floor(z));
-        if (y > SEA_LEVEL) {
-          this.mobs.push(new Mob(this.scene, type, x, y, z));
+      } else if (this.gameMode === 'creative') {
+        // Creative: spawn both
+        const isNight2 = this.dayTime < 0.25 || this.dayTime > 0.75;
+        if (isNight2) {
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 20 + Math.random() * 20;
+          const x = this.playerPos.x + Math.cos(angle) * dist;
+          const z = this.playerPos.z + Math.sin(angle) * dist;
+          const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+          if (y > SEA_LEVEL) {
+            const type = Math.random() < 0.5 ? 'zombie' : 'skeleton';
+            this.mobs.push(new Mob(this.scene, type, x, y, z));
+          }
+        } else if (this.mobs.filter(m => m.type !== 'zombie' && m.type !== 'skeleton').length < 8) {
+          const types = ['pig', 'chicken', 'cow', 'sheep'];
+          const type = types[(Math.random() * types.length) | 0];
+          const angle = Math.random() * Math.PI * 2;
+          const dist = 15 + Math.random() * 25;
+          const x = this.playerPos.x + Math.cos(angle) * dist;
+          const z = this.playerPos.z + Math.sin(angle) * dist;
+          const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+          if (y > SEA_LEVEL) {
+            this.mobs.push(new Mob(this.scene, type, x, y, z));
+          }
         }
       }
     }
@@ -2488,13 +3125,30 @@ class Game {
 
       if (result === true) {
         // Mob dead or despawned
+        // Survival: give XP for killing hostile mobs
+        if (this.gameMode === 'survival' && (mob.type === 'zombie' || mob.type === 'skeleton') && mob.deathTimer >= 0) {
+          this.xp += mob.type === 'zombie' ? 5 : 8;
+          this._showXPPopup(mob.pos);
+          // Chance to drop items
+          if (Math.random() < 0.3) {
+            this.droppedItems.push(new DroppedItem(this.scene, BLOCK.RAW_PORK, mob.pos.x, mob.pos.y, mob.pos.z));
+          }
+        }
         mob.dispose(this.scene);
         this.mobs.splice(i, 1);
         continue;
       }
 
       if (result && result.attack) {
-        this.takeDamage(result.damage);
+        // Creative mode: no damage
+        if (this.gameMode !== 'creative') {
+          let dmg = result.damage;
+          // Boss deals more damage
+          if (mob === this.bossMob) dmg = 5;
+          // Armor reduction
+          if (this.equipment[1] != null) dmg = Math.max(1, dmg - 2);
+          this.takeDamage(dmg);
+        }
       }
 
       // Despawn far mobs
@@ -2504,6 +3158,49 @@ class Game {
         this.mobs.splice(i, 1);
       }
     }
+  }
+
+  _spawnWave(waveNum) {
+    const zombieCount = 3 + (waveNum - 1) * 2;
+    const skeletonCount = Math.max(0, (waveNum - 1));
+    for (let i = 0; i < zombieCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 20 + Math.random() * 10;
+      const x = this.playerPos.x + Math.cos(angle) * dist;
+      const z = this.playerPos.z + Math.sin(angle) * dist;
+      const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+      if (y > 0) {
+        const mob = new Mob(this.scene, 'zombie', x, y, z);
+        // Stronger with higher waves
+        mob.health = 20 + (waveNum - 1) * 5;
+        mob.maxHealth = mob.health;
+        this.mobs.push(mob);
+      }
+    }
+    for (let i = 0; i < skeletonCount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 20 + Math.random() * 10;
+      const x = this.playerPos.x + Math.cos(angle) * dist;
+      const z = this.playerPos.z + Math.sin(angle) * dist;
+      const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+      if (y > 0) {
+        const mob = new Mob(this.scene, 'skeleton', x, y, z);
+        mob.health = 20 + (waveNum - 1) * 3;
+        mob.maxHealth = mob.health;
+        this.mobs.push(mob);
+      }
+    }
+  }
+
+  _showXPPopup(pos) {
+    const popup = document.createElement('div');
+    popup.className = 'xp-popup';
+    popup.textContent = '+' + this.xp + ' XP';
+    // Position in screen space (approximate)
+    popup.style.left = (window.innerWidth / 2) + 'px';
+    popup.style.top = (window.innerHeight / 2 - 30) + 'px';
+    document.body.appendChild(popup);
+    setTimeout(() => popup.remove(), 1000);
   }
 
   _updateDroppedItems(dt) {
@@ -2589,7 +3286,8 @@ class Game {
   }
 
   takeDamage(amount) {
-    if (this.health <= 0) return;
+    if (this.health <= 0 || this.isDead) return;
+    if (this.gameMode === 'creative') return; // Creative: no damage
     this.health = Math.max(0, this.health - amount);
     this.sound.play('hurt');
     this._updateHealthUI();
@@ -2605,12 +3303,71 @@ class Game {
   }
 
   _die() {
+    this.isDead = true;
+    this.deathTimer = 5;
+    document.getElementById('deathTimer').textContent = '5';
+
+    if (this.gameMode === 'adventure') {
+      this.advLives--;
+      if (this.advLives <= 0) {
+        // Game over for adventure
+        this._showResult(false, this.advTitle, '所有生命已耗尽');
+        return;
+      }
+    }
+
+    if (this.gameMode === 'survival') {
+      document.getElementById('deathScreen').classList.add('visible');
+      this.controls.unlock();
+      // Death countdown
+      const countdown = setInterval(() => {
+        this.deathTimer--;
+        if (this.deathTimer <= 0) {
+          clearInterval(countdown);
+          this._respawn();
+        } else {
+          document.getElementById('deathTimer').textContent = this.deathTimer;
+        }
+      }, 1000);
+    } else if (this.gameMode === 'adventure') {
+      document.getElementById('deathScreen').classList.add('visible');
+      this.controls.unlock();
+      const countdown = setInterval(() => {
+        this.deathTimer--;
+        if (this.deathTimer <= 0) {
+          clearInterval(countdown);
+          this._respawn();
+        } else {
+          document.getElementById('deathTimer').textContent = this.deathTimer;
+        }
+      }, 1000);
+    } else {
+      this._respawn();
+    }
+  }
+
+  _respawn() {
+    this.isDead = false;
     this.health = this.maxHealth;
+    if (this.gameMode === 'survival') {
+      this.hunger = 10;
+      // Lose half inventory
+      for (const key in this.inventory) {
+        this.inventory[key] = Math.floor(this.inventory[key] / 2);
+        if (this.inventory[key] <= 0) delete this.inventory[key];
+      }
+      this._syncHotbar();
+    }
     this._updateHealthUI();
-    const spawn = this.world.findSpawnPos();
-    this.playerPos.copy(spawn);
+    this._updateHungerUI();
+    this._updateHotbarUI();
+
+    this.playerPos.copy(this.spawnPos);
     this.playerVel.set(0, 0, 0);
     this.camera.position.copy(this.playerPos);
+
+    document.getElementById('deathScreen').classList.remove('visible');
+    if (this.isPlaying) this.controls.lock();
   }
 
   _attackMob() {
@@ -2668,9 +3425,34 @@ class Game {
       this.accumulatedTime -= TICK_RATE;
     }
 
-    this._updateInteraction(dt);
-    this._updateMobs(dt);
-    this._updateDroppedItems(dt);
+    if (!this.isDead) {
+      this._updateInteraction(dt);
+      this._updateMobs(dt);
+      this._updateDroppedItems(dt);
+
+      // Survival: hunger system
+      if (this.gameMode === 'survival') {
+        this.hunger = Math.max(0, this.hunger - 0.03 * dt);
+        // Sprint hunger cost
+        if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) {
+          const isMoving = Math.abs(this.playerVel.x) + Math.abs(this.playerVel.z) > 1;
+          if (isMoving) this.hunger = Math.max(0, this.hunger - 0.05 * dt);
+        }
+        // Hunger damage
+        if (this.hunger <= 0) {
+          this.takeDamage(2 * dt);
+        } else if (this.hunger < 3) {
+          this.takeDamage(0.5 * dt);
+        }
+        this._updateHungerUI();
+      }
+
+      // Adventure mode updates
+      if (this.gameMode === 'adventure' && this.advActive) {
+        this._updateAdventure(dt);
+      }
+    }
+
     this.particles.update(dt);
     this._updateDayNight(dt);
 
@@ -2685,10 +3467,446 @@ class Game {
 
     this._updateDebugInfo();
 
-    // Handle attack on left click (instant, not held)
-    // Already handled through mouse.left in interaction
-
     this.renderer.render(this.scene, this.camera);
+  }
+
+  // ============================================================
+  //  ADVENTURE MODE
+  // ============================================================
+  _initAdventureLevel(level) {
+    this.world.generate();
+    this.advActive = true;
+    this.advStartTime = performance.now();
+    this.advLives = level === 3 ? 3 : 1;
+    this.health = this.maxHealth;
+
+    if (level === 1) {
+      this._buildMazeLevel();
+    } else if (level === 2) {
+      this._buildSiegeLevel();
+    } else if (level === 3) {
+      this._buildBossLevel();
+    }
+  }
+
+  _updateAdventure(dt) {
+    if (this.adventureLevel === 1) {
+      // Maze: check if reached end
+      if (this.mazeEnd) {
+        const dx = this.playerPos.x - this.mazeEnd.x;
+        const dz = this.playerPos.z - this.mazeEnd.z;
+        if (Math.abs(dx) < 2 && Math.abs(dz) < 2) {
+          this.advActive = false;
+          const elapsed = ((performance.now() - this.advStartTime) / 1000).toFixed(1);
+          this._showResult(true, '迷宫逃脱', '用时 ' + elapsed + ' 秒');
+        }
+      }
+      // Update timer
+      const elapsed = ((performance.now() - this.advStartTime) / 1000).toFixed(1);
+      document.getElementById('advTimer').textContent = elapsed + 's';
+    } else if (this.adventureLevel === 2) {
+      // Siege: survive 5 minutes
+      const elapsed = (performance.now() - this.advStartTime) / 1000;
+      const remaining = Math.max(0, 300 - elapsed);
+      document.getElementById('advTimer').textContent = this._formatTime(remaining);
+
+      // Spawn waves every 15 seconds
+      this.waveTimer += dt;
+      if (this.waveTimer >= 15) {
+        this.waveTimer = 0;
+        this.waveNumber++;
+        this._spawnSiegeWave();
+      }
+
+      // Show wave info
+      if (this.waveNumber > 0) {
+        document.getElementById('advObjective').textContent = '波次 ' + this.waveNumber + ' | 坚持 ' + this._formatTime(remaining);
+      }
+
+      if (remaining <= 0) {
+        this.advActive = false;
+        this._showResult(true, '僵尸围城', '成功生存 5 分钟');
+      }
+    } else if (this.adventureLevel === 3) {
+      // Boss: update boss HP bar
+      if (this.bossMob) {
+        const hpPct = Math.max(0, this.bossMob.health / this.bossMob.maxHealth * 100);
+        document.getElementById('bossHPFill').style.width = hpPct + '%';
+        document.getElementById('bossName').textContent = '巨型僵尸 HP: ' + Math.ceil(this.bossMob.health) + '/' + this.bossMob.maxHealth;
+      }
+      // Lives
+      document.getElementById('advLives').textContent = '生命: ' + this.advLives;
+      // Timer
+      const elapsed = ((performance.now() - this.advStartTime) / 1000).toFixed(1);
+      document.getElementById('advTimer').textContent = elapsed + 's';
+    }
+  }
+
+  _formatTime(sec) {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  _showResult(won, title, subtitle) {
+    document.getElementById('resultTitle').textContent = won ? '通关!' : '失败';
+    document.getElementById('resultTitle').style.color = won ? '#5eead4' : '#f87171';
+    document.getElementById('resultSub').textContent = title;
+    document.getElementById('resultTime').textContent = subtitle;
+    document.getElementById('resultScreen').classList.add('visible');
+    this.isPlaying = false;
+    this.controls.unlock();
+    this.advActive = false;
+  }
+
+  _buildMazeLevel() {
+    // Generate a 32x32 maze using recursive backtracking
+    const mazeW = 32, mazeH = 32;
+    const maze = this._generateMaze(mazeW, mazeH);
+
+    // Build maze walls in the world (centered at origin)
+    const offsetX = -Math.floor(mazeW / 2);
+    const offsetZ = -Math.floor(mazeH / 2);
+    const wallHeight = 4;
+    const baseY = SEA_LEVEL;
+
+    for (let mz = 0; mz < mazeH; mz++) {
+      for (let mx = 0; mx < mazeW; mx++) {
+        const cell = maze[mz][mx];
+        const wx = offsetX + mx;
+        const wz = offsetZ + mz;
+
+        // Floor
+        this.world.setBlock(wx, baseY, wz, BLOCK.STONE_BRICK);
+
+        // Walls
+        if (cell.north) {
+          for (let y = 1; y <= wallHeight; y++) {
+            this.world.setBlock(wx, baseY + y, wz, BLOCK.STONE_BRICK);
+          }
+        }
+        if (cell.west) {
+          for (let y = 1; y <= wallHeight; y++) {
+            this.world.setBlock(wx, baseY + y, wz, BLOCK.STONE_BRICK);
+          }
+        }
+        if (mx === mazeW - 1 && cell.east) {
+          for (let y = 1; y <= wallHeight; y++) {
+            this.world.setBlock(wx + 1, baseY + y, wz, BLOCK.STONE_BRICK);
+          }
+        }
+        if (mz === mazeH - 1 && cell.south) {
+          for (let y = 1; y <= wallHeight; y++) {
+            this.world.setBlock(wx, baseY + y, wz + 1, BLOCK.STONE_BRICK);
+          }
+        }
+      }
+    }
+
+    // Outer boundary walls
+    for (let x = offsetX - 1; x <= offsetX + mazeW; x++) {
+      for (let y = 1; y <= wallHeight + 1; y++) {
+        this.world.setBlock(x, baseY + y, offsetZ - 1, BLOCK.STONE_BRICK);
+        this.world.setBlock(x, baseY + y, offsetZ + mazeH, BLOCK.STONE_BRICK);
+      }
+    }
+    for (let z = offsetZ - 1; z <= offsetZ + mazeH; z++) {
+      for (let y = 1; y <= wallHeight + 1; y++) {
+        this.world.setBlock(offsetX - 1, baseY + y, z, BLOCK.STONE_BRICK);
+        this.world.setBlock(offsetX + mazeW, baseY + y, z, BLOCK.STONE_BRICK);
+      }
+    }
+
+    // Start and end markers (glowstone pillars)
+    this.mazeStart = { x: offsetX + 0.5, z: offsetZ + 0.5 };
+    this.mazeEnd = { x: offsetX + mazeW - 0.5, z: offsetZ + mazeH - 0.5 };
+
+    // Start glow
+    for (let y = 1; y <= wallHeight + 2; y++) {
+      this.world.setBlock(offsetX, baseY + y, offsetZ, BLOCK.GLOWSTONE);
+    }
+    // End glow
+    for (let y = 1; y <= wallHeight + 2; y++) {
+      this.world.setBlock(offsetX + mazeW - 1, baseY + y, offsetZ + mazeH - 1, BLOCK.GLOWSTONE);
+    }
+
+    // Clear start and end cells
+    for (let y = 1; y <= wallHeight; y++) {
+      this.world.setBlock(offsetX, baseY + y, offsetZ, BLOCK.AIR);
+      this.world.setBlock(offsetX + mazeW - 1, baseY + y, offsetZ + mazeH - 1, BLOCK.AIR);
+    }
+
+    // Rebuild chunks in maze area
+    this._rebuildArea(offsetX - 2, offsetZ - 2, offsetX + mazeW + 2, offsetZ + mazeH + 2);
+
+    // Place player at start
+    this.playerPos.set(offsetX + 0.5, baseY + 1.5, offsetZ + 0.5);
+    this.spawnPos.copy(this.playerPos);
+
+    // UI
+    document.getElementById('advTitle').textContent = '迷宫逃脱';
+    document.getElementById('advObjective').textContent = '找到迷宫出口';
+    document.getElementById('advTimer').textContent = '0.0s';
+    document.getElementById('advLives').textContent = '';
+  }
+
+  _generateMaze(width, height) {
+    // Recursive backtracking algorithm
+    const cells = [];
+    for (let z = 0; z < height; z++) {
+      cells[z] = [];
+      for (let x = 0; x < width; x++) {
+        cells[z][x] = { visited: false, north: true, south: true, east: true, west: true };
+      }
+    }
+
+    const stack = [];
+    const start = { x: 0, z: 0 };
+    cells[0][0].visited = true;
+    stack.push(start);
+
+    while (stack.length > 0) {
+      const current = stack[stack.length - 1];
+      const neighbors = [];
+
+      // Check all 4 neighbors
+      const dirs = [
+        { dx: 0, dz: -1, wall: 'north', opposite: 'south' },
+        { dx: 0, dz: 1, wall: 'south', opposite: 'north' },
+        { dx: 1, dz: 0, wall: 'east', opposite: 'west' },
+        { dx: -1, dz: 0, wall: 'west', opposite: 'east' },
+      ];
+
+      for (const d of dirs) {
+        const nx = current.x + d.dx;
+        const nz = current.z + d.dz;
+        if (nx >= 0 && nx < width && nz >= 0 && nz < height && !cells[nz][nx].visited) {
+          neighbors.push({ x: nx, z: nz, wall: d.wall, opposite: d.opposite });
+        }
+      }
+
+      if (neighbors.length > 0) {
+        const next = neighbors[(Math.random() * neighbors.length) | 0];
+        // Remove wall between current and next
+        cells[current.z][current.x][next.wall] = false;
+        cells[next.z][next.x][next.opposite] = false;
+        cells[next.z][next.x].visited = true;
+        stack.push({ x: next.x, z: next.z });
+      } else {
+        stack.pop();
+      }
+    }
+
+    return cells;
+  }
+
+  _rebuildArea(x1, z1, x2, z2) {
+    const cx1 = Math.floor(x1 / CHUNK_SIZE);
+    const cz1 = Math.floor(z1 / CHUNK_SIZE);
+    const cx2 = Math.floor(x2 / CHUNK_SIZE);
+    const cz2 = Math.floor(z2 / CHUNK_SIZE);
+    for (let cx = cx1; cx <= cx2; cx++) {
+      for (let cz = cz1; cz <= cz2; cz++) {
+        const chunk = this.world.getChunk(cx, cz);
+        if (chunk) chunk.buildMesh(this.world.texGen);
+      }
+    }
+  }
+
+  _buildSiegeLevel() {
+    const size = 24;
+    const half = Math.floor(size / 2);
+    const baseY = SEA_LEVEL;
+    const wallHeight = 6;
+
+    // Floor
+    for (let x = -half; x < half; x++) {
+      for (let z = -half; z < half; z++) {
+        this.world.setBlock(x, baseY, z, BLOCK.STONE_BRICK);
+      }
+    }
+
+    // Walls
+    for (let i = -half; i < half; i++) {
+      for (let y = 1; y <= wallHeight; y++) {
+        this.world.setBlock(i, baseY + y, -half, BLOCK.STONE_BRICK);
+        this.world.setBlock(i, baseY + y, half - 1, BLOCK.STONE_BRICK);
+        this.world.setBlock(-half, baseY + y, i, BLOCK.STONE_BRICK);
+        this.world.setBlock(half - 1, baseY + y, i, BLOCK.STONE_BRICK);
+      }
+    }
+
+    // Some obstacles inside
+    const obstacles = [
+      { x: -5, z: -5, w: 3, h: 3 }, { x: 5, z: 5, w: 3, h: 3 },
+      { x: -5, z: 5, w: 2, h: 2 }, { x: 5, z: -5, w: 2, h: 2 },
+      { x: 0, z: -8, w: 4, h: 1 }, { x: 0, z: 8, w: 4, h: 1 },
+    ];
+    for (const ob of obstacles) {
+      for (let x = ob.x; x < ob.x + ob.w; x++) {
+        for (let z = ob.z; z < ob.z + ob.h; z++) {
+          for (let y = 1; y <= 3; y++) {
+            this.world.setBlock(x, baseY + y, z, BLOCK.STONE);
+          }
+        }
+      }
+    }
+
+    this._rebuildArea(-half - 1, -half - 1, half + 1, half + 1);
+
+    // Player at center
+    this.playerPos.set(0.5, baseY + 1.5, 0.5);
+    this.spawnPos.copy(this.playerPos);
+    this.waveTimer = 0;
+    this.waveNumber = 0;
+
+    // Give player some weapons
+    this._addBlock(BLOCK.IRON_SWORD, 1);
+    this._addBlock(BLOCK.STONE, 32);
+    this._addBlock(BLOCK.PLANKS, 16);
+    this._syncHotbar();
+
+    // UI
+    document.getElementById('advTitle').textContent = '僵尸围城';
+    document.getElementById('advObjective').textContent = '坚持 5 分钟';
+    document.getElementById('advTimer').textContent = '5:00';
+    document.getElementById('advLives').textContent = '';
+    document.getElementById('bossHPBar').classList.remove('visible');
+  }
+
+  _spawnSiegeWave() {
+    const size = 24;
+    const half = Math.floor(size / 2);
+    const baseY = SEA_LEVEL;
+    const count = 3 + this.waveNumber * 2;
+    const baseYActual = this.world.getHeight(0, 0) + 1;
+
+    for (let i = 0; i < count; i++) {
+      const side = (Math.random() * 4) | 0;
+      let x, z;
+      const offset = -half + 1 + Math.random() * (size - 2);
+      switch (side) {
+        case 0: x = -half + 1; z = offset; break; // north wall
+        case 1: x = half - 2; z = offset; break;  // south wall
+        case 2: x = offset; z = -half + 1; break;  // west wall
+        case 3: x = offset; z = half - 2; break;   // east wall
+      }
+      const y = baseYActual;
+      const mob = new Mob(this.scene, 'zombie', x, y, z);
+      mob.health = 20 + this.waveNumber * 3;
+      mob.maxHealth = mob.health;
+      this.mobs.push(mob);
+    }
+  }
+
+  _buildBossLevel() {
+    const size = 32;
+    const half = Math.floor(size / 2);
+    const baseY = SEA_LEVEL;
+    const wallHeight = 8;
+
+    // Floor
+    for (let x = -half; x < half; x++) {
+      for (let z = -half; z < half; z++) {
+        this.world.setBlock(x, baseY, z, BLOCK.STONE_BRICK);
+      }
+    }
+
+    // Walls
+    for (let i = -half; i < half; i++) {
+      for (let y = 1; y <= wallHeight; y++) {
+        this.world.setBlock(i, baseY + y, -half, BLOCK.STONE_BRICK);
+        this.world.setBlock(i, baseY + y, half - 1, BLOCK.STONE_BRICK);
+        this.world.setBlock(-half, baseY + y, i, BLOCK.STONE_BRICK);
+        this.world.setBlock(half - 1, baseY + y, i, BLOCK.STONE_BRICK);
+      }
+    }
+
+    this._rebuildArea(-half - 1, -half - 1, half + 1, half + 1);
+
+    // Player position
+    this.playerPos.set(-half + 3, baseY + 1.5, 0.5);
+    this.spawnPos.copy(this.playerPos);
+
+    // Give player iron sword
+    this._addBlock(BLOCK.IRON_SWORD, 1);
+    this._addBlock(BLOCK.COOKED_PORK, 10);
+    this._syncHotbar();
+
+    // Spawn Boss
+    this._spawnBoss();
+
+    // UI
+    document.getElementById('advTitle').textContent = 'Boss战';
+    document.getElementById('advObjective').textContent = '击败巨型僵尸';
+    document.getElementById('advTimer').textContent = '0.0s';
+    document.getElementById('advLives').textContent = '生命: ' + this.advLives;
+    document.getElementById('bossHPBar').classList.add('visible');
+  }
+
+  _spawnBoss() {
+    const baseY = this.world.getHeight(0, 0);
+    const boss = new Mob(this.scene, 'zombie', 0, baseY, 0);
+    boss.health = 100;
+    boss.maxHealth = 100;
+    boss.speed = 1.5;
+    boss.state = 'chasing';
+
+    // Make boss visually larger
+    boss.group.scale.set(3, 3, 3);
+    boss.body.scale.set(1, 1.5, 1);
+
+    this.bossMob = boss;
+    this.bossDefeated = false;
+    this.bossSpawnTimer = 0;
+    this.mobs.push(boss);
+  }
+
+  _updateBoss(dt) {
+    if (!this.bossMob || this.bossMob.deathTimer >= 0) {
+      if (this.bossMob && this.bossMob.deathTimer >= 0 && !this.bossDefeated) {
+        this.bossDefeated = true;
+        this.advActive = false;
+        const elapsed = ((performance.now() - this.advStartTime) / 1000).toFixed(1);
+        this._showResult(true, 'Boss战', '用时 ' + elapsed + ' 秒击败了 Boss');
+        document.getElementById('bossHPBar').classList.remove('visible');
+      }
+      return;
+    }
+
+    // Boss charge attack: occasionally rush toward player
+    const distToPlayer = this.bossMob.pos.distanceTo(this.playerPos);
+    if (distToPlayer < 15 && Math.random() < 0.005) {
+      const dir = new THREE.Vector3(
+        this.playerPos.x - this.bossMob.pos.x, 0,
+        this.playerPos.z - this.bossMob.pos.z
+      ).normalize();
+      this.bossMob.vel.x += dir.x * 15;
+      this.bossMob.vel.z += dir.z * 15;
+    }
+
+    // Spawn mini zombies every 30 seconds
+    this.bossSpawnTimer = (this.bossSpawnTimer || 0) + dt;
+    if (this.bossSpawnTimer >= 30) {
+      this.bossSpawnTimer = 0;
+      for (let i = 0; i < 3; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 5 + Math.random() * 5;
+        const x = this.bossMob.pos.x + Math.cos(angle) * dist;
+        const z = this.bossMob.pos.z + Math.sin(angle) * dist;
+        const y = this.world.getHeight(Math.floor(x), Math.floor(z));
+        if (y > 0) {
+          const minion = new Mob(this.scene, 'zombie', x, y, z);
+          minion.health = 15;
+          minion.maxHealth = 15;
+          this.mobs.push(minion);
+        }
+      }
+    }
+
+    // Boss contact damage is higher (handled in mob update, but override damage)
+    // The boss's attack returns higher damage
+    this.bossMob.attackCooldown = Math.max(0, this.bossMob.attackCooldown - dt);
   }
 }
 
@@ -2700,7 +3918,7 @@ window.game = game;
 
 // Also handle left click for attacking mobs (separate from block breaking)
 document.addEventListener('mousedown', (e) => {
-  if (!game.isPlaying || game.isInventoryOpen || game.isCraftOpen) return;
+  if (!game.isPlaying || game.isInventoryOpen || game.isCraftOpen || game.isDead) return;
   if (e.button === 0) {
     // Check if we hit a mob first
     const dir = new THREE.Vector3();
@@ -2711,16 +3929,19 @@ document.addEventListener('mousedown', (e) => {
     let closestDist = REACH;
     let blockHit = null;
 
-    // Check mob hit
+    // Check mob hit (use larger hitbox for boss)
     for (const mob of game.mobs) {
       if (mob.deathTimer >= 0) continue;
-      const mobCenter = mob.pos.clone().add(new THREE.Vector3(0, 0.6, 0));
+      const isBoss = mob === game.bossMob;
+      const hitRadius = isBoss ? 2.5 : 0.8;
+      const hitDist = isBoss ? 12 : 0.6;
+      const mobCenter = mob.pos.clone().add(new THREE.Vector3(0, isBoss ? 2 : 0.6, 0));
       const toMob = mobCenter.clone().sub(origin);
       const proj = toMob.dot(dir);
-      if (proj < 0 || proj > REACH) continue;
+      if (proj < 0 || proj > (isBoss ? 12 : REACH)) continue;
       const closest = origin.clone().add(dir.clone().multiplyScalar(proj));
       const dist = closest.distanceTo(mobCenter);
-      if (dist < 0.8 && proj < closestDist) {
+      if (dist < hitRadius && proj < closestDist) {
         closestDist = proj;
         closestMob = mob;
       }
@@ -2734,7 +3955,14 @@ document.addEventListener('mousedown', (e) => {
     }
 
     if (closestMob) {
-      const dead = closestMob.takeDamage(4);
+      // Calculate damage with weapon
+      let dmg = 4;
+      if (game.gameMode === 'survival' || game.gameMode === 'adventure') {
+        if (game.equipment[0] === BLOCK.IRON_SWORD) dmg = 9;
+      }
+      // Creative: instakill
+      if (game.gameMode === 'creative') dmg = 999;
+      const dead = closestMob.takeDamage(dmg);
       game.sound.play('hit');
       const kbDir = closestMob.pos.clone().sub(game.playerPos).normalize();
       closestMob.vel.x += kbDir.x * 5;
