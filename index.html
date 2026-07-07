@@ -1461,6 +1461,12 @@ class World {
             chunk.buildMesh(texGen);
             this.chunks.set(key, chunk);
             loaded++;
+            // Mark all loaded neighbors as dirty so their boundary faces get rebuilt
+            for (const [ndx, ndz] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+              const nk = this.getChunkKey(cx + ndx, cz + ndz);
+              const neighbor = this.chunks.get(nk);
+              if (neighbor) { neighbor.dirty = true; this.dirtyChunks.add(nk); }
+            }
           }
         }
       }
@@ -2770,97 +2776,90 @@ class Game {
   }
 
   _updatePhysics(dt) {
-    dt = Math.min(dt, 0.05); // cap to prevent tunneling
-
     if (this.isDead) return;
+    dt = Math.min(dt, 0.05);
 
-    const forward = new THREE.Vector3();
-    this.camera.getWorldDirection(forward);
-    forward.y = 0; forward.normalize();
-    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-
-    // Input
-    let inputX = 0, inputZ = 0, inputY = 0;
-    if (this.keys['KeyW']) inputZ += 1;
-    if (this.keys['KeyS']) inputZ -= 1;
-    if (this.keys['KeyA']) inputX -= 1;
-    if (this.keys['KeyD']) inputX += 1;
-    const inputLen = Math.sqrt(inputX * inputX + inputZ * inputZ);
-    if (inputLen > 0) { inputX /= inputLen; inputZ /= inputLen; }
-
-    // Creative flying: full 3D movement
+    // --- Creative flying ---
     if (this.isFlying && this.gameMode === 'creative') {
       const flyDir = new THREE.Vector3();
       this.camera.getWorldDirection(flyDir);
-      const flyForward = new THREE.Vector3(flyDir.x, 0, flyDir.z).normalize();
-      const flyRight = new THREE.Vector3().crossVectors(flyForward, new THREE.Vector3(0, 1, 0)).normalize();
-
-      const flySpeed = MOVE_SPEED * 2;
-      const targetVx = (flyForward.x * inputZ + flyRight.x * inputX) * flySpeed;
-      const targetVz = (flyForward.z * inputZ + flyRight.z * inputX) * flySpeed;
-      let targetVy = 0;
-      if (this.keys['Space']) targetVy = flySpeed;
-      if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) targetVy = -flySpeed;
-
-      this.playerVel.x += (targetVx - this.playerVel.x) * Math.min(1, 8 * dt);
-      this.playerVel.y += (targetVy - this.playerVel.y) * Math.min(1, 8 * dt);
-      this.playerVel.z += (targetVz - this.playerVel.z) * Math.min(1, 8 * dt);
-
-      // Direct position update for flying (no collision)
+      const flyF = new THREE.Vector3(flyDir.x, 0, flyDir.z).normalize();
+      const flyR = new THREE.Vector3().crossVectors(flyF, new THREE.Vector3(0, 1, 0)).normalize();
+      let ix = 0, iz = 0;
+      if (this.keys['KeyW']) iz += 1;
+      if (this.keys['KeyS']) iz -= 1;
+      if (this.keys['KeyA']) ix -= 1;
+      if (this.keys['KeyD']) ix += 1;
+      const il = Math.sqrt(ix * ix + iz * iz);
+      if (il > 0) { ix /= il; iz /= il; }
+      const fsp = MOVE_SPEED * 2;
+      const tvx = (flyF.x * iz + flyR.x * ix) * fsp;
+      const tvz = (flyF.z * iz + flyR.z * ix) * fsp;
+      let tvy = 0;
+      if (this.keys['Space']) tvy = fsp;
+      if (this.keys['ShiftLeft'] || this.keys['ShiftRight']) tvy = -fsp;
+      this.playerVel.x += (tvx - this.playerVel.x) * Math.min(1, 8 * dt);
+      this.playerVel.y += (tvy - this.playerVel.y) * Math.min(1, 8 * dt);
+      this.playerVel.z += (tvz - this.playerVel.z) * Math.min(1, 8 * dt);
       this.playerPos.x += this.playerVel.x * dt;
       this.playerPos.y += this.playerVel.y * dt;
       this.playerPos.z += this.playerVel.z * dt;
-
-      // World boundary (adventure mode only)
       if (!this.world.isInfinite) {
-        const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
-        this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
-        this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+        const ws = WORLD_CHUNKS * CHUNK_SIZE / 2;
+        this.playerPos.x = Math.max(-ws, Math.min(ws, this.playerPos.x));
+        this.playerPos.z = Math.max(-ws, Math.min(ws, this.playerPos.z));
       }
       this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
-
-      // Camera
       const bobOffset = Math.sin(this.headBob) * 0.06;
       this.camera.position.set(this.playerPos.x, this.playerPos.y + 1.6 + bobOffset, this.playerPos.z);
       return;
     }
 
-    const speed = MOVE_SPEED;
-    const targetVx = (forward.x * inputZ + right.x * inputX) * speed;
-    const targetVz = (forward.z * inputZ + right.z * inputX) * speed;
-
-    // Smooth movement (different friction on ground vs air)
-    const friction = this.onGround ? 10 : 3;
-    this.playerVel.x += (targetVx - this.playerVel.x) * Math.min(1, friction * dt);
-    this.playerVel.z += (targetVz - this.playerVel.z) * Math.min(1, friction * dt);
+    // --- Input ---
+    const forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0; forward.normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+    let ix = 0, iz = 0;
+    if (this.keys['KeyW']) iz += 1;
+    if (this.keys['KeyS']) iz -= 1;
+    if (this.keys['KeyA']) ix -= 1;
+    if (this.keys['KeyD']) ix += 1;
+    const il = Math.sqrt(ix * ix + iz * iz);
+    if (il > 0) { ix /= il; iz /= il; }
+    const speed = (this.keys['ShiftLeft'] || this.keys['ShiftRight']) ? MOVE_SPEED * 1.6 : MOVE_SPEED;
+    const tvx = (forward.x * iz + right.x * ix) * speed;
+    const tvz = (forward.z * iz + right.z * ix) * speed;
+    const friction = this.onGround ? 12 : 3;
+    this.playerVel.x += (tvx - this.playerVel.x) * Math.min(1, friction * dt);
+    this.playerVel.z += (tvz - this.playerVel.z) * Math.min(1, friction * dt);
 
     // Jump
     if (this.keys['Space'] && this.onGround) {
       this.playerVel.y = JUMP_VEL;
       this.onGround = false;
-      // Survival: hunger cost for jumping
-      if (this.gameMode === 'survival') {
-        this.hunger = Math.max(0, this.hunger - 0.2);
-      }
+      if (this.gameMode === 'survival') this.hunger = Math.max(0, this.hunger - 0.2);
     }
 
-    // Gravity (not in creative flying)
+    // Gravity + terminal velocity
     this.playerVel.y += GRAVITY * dt;
+    if (this.playerVel.y < -40) this.playerVel.y = -40;
 
-    // Step-up height
-    const stepHeight = 0.5;
-    const playerHalfW = 0.3;
-    const playerH = 1.8;
+    // --- Sub-stepped AABB collision physics ---
+    const SUBSTEPS = 8;
+    const sdt = dt / SUBSTEPS;
+    const HW = 0.3;
+    const H = 1.8;
+    const STEP = 0.5;
 
     const solidAt = (bx, by, bz) => {
       const b = this.world.getBlock(bx, by, bz);
       return b !== BLOCK.AIR && BLOCK_DATA[b]?.solid;
     };
-
-    const aabbOverlaps = (minX, minY, minZ, maxX, maxY, maxZ) => {
-      const x0 = Math.floor(minX), x1 = Math.floor(maxX);
-      const y0 = Math.floor(minY), y1 = Math.floor(maxY);
-      const z0 = Math.floor(minZ), z1 = Math.floor(maxZ);
+    const overlaps = (minX, minY, minZ, maxX, maxY, maxZ) => {
+      const x0 = Math.floor(minX), x1 = Math.floor(maxX - 1e-6);
+      const y0 = Math.floor(minY), y1 = Math.floor(maxY - 1e-6);
+      const z0 = Math.floor(minZ), z1 = Math.floor(maxZ - 1e-6);
       for (let bx = x0; bx <= x1; bx++)
         for (let by = y0; by <= y1; by++)
           for (let bz = z0; bz <= z1; bz++)
@@ -2868,104 +2867,95 @@ class Game {
       return false;
     };
 
-    const px = this.playerPos.x, py = this.playerPos.y, pz = this.playerPos.z;
-    const pMinX = px - playerHalfW, pMaxX = px + playerHalfW;
-    const pMinZ = pz - playerHalfW, pMaxZ = pz + playerHalfW;
-
-    // Try move X
-    const newX = px + this.playerVel.x * dt;
-    if (!aabbOverlaps(newX - playerHalfW, py, pMinZ, newX + playerHalfW, py + playerH, pMaxZ)) {
-      this.playerPos.x = newX;
-    } else {
-      // Try step up
-      if (this.onGround && !aabbOverlaps(newX - playerHalfW, py + stepHeight, pMinZ, newX + playerHalfW, py + playerH + stepHeight, pMaxZ)) {
-        this.playerPos.x = newX;
-        this.playerPos.y += stepHeight;
-      } else {
-        // Slide along wall: zero out velocity in X
-        this.playerVel.x = 0;
+    let wasOnGround = this.onGround;
+    for (let s = 0; s < SUBSTEPS; s++) {
+      // X
+      this.playerPos.x += this.playerVel.x * sdt;
+      if (overlaps(this.playerPos.x - HW, this.playerPos.y, this.playerPos.z - HW,
+                   this.playerPos.x + HW, this.playerPos.y + H, this.playerPos.z + HW)) {
+        if (wasOnGround && !overlaps(this.playerPos.x - HW, this.playerPos.y + STEP, this.playerPos.z - HW,
+                                     this.playerPos.x + HW, this.playerPos.y + H + STEP, this.playerPos.z + HW)) {
+          this.playerPos.y += STEP;
+        } else {
+          const ox = this.playerPos.x;
+          const dir = this.playerVel.x > 0 ? -1 : 1;
+          for (let p = 0.001; p <= 0.5; p += 0.001) {
+            this.playerPos.x = ox + dir * p;
+            if (!overlaps(this.playerPos.x - HW, this.playerPos.y, this.playerPos.z - HW,
+                         this.playerPos.x + HW, this.playerPos.y + H, this.playerPos.z + HW)) break;
+          }
+          this.playerVel.x = 0;
+        }
       }
-    }
-
-    // Try move Z
-    const curX = this.playerPos.x;
-    const newZ = pz + this.playerVel.z * dt;
-    if (!aabbOverlaps(curX - playerHalfW, py, newZ - playerHalfW, curX + playerHalfW, py + playerH, newZ + playerHalfW)) {
-      this.playerPos.z = newZ;
-    } else {
-      if (this.onGround && !aabbOverlaps(curX - playerHalfW, py + stepHeight, newZ - playerHalfW, curX + playerHalfW, py + playerH + stepHeight, newZ + playerHalfW)) {
-        this.playerPos.z = newZ;
-        this.playerPos.y += stepHeight;
-      } else {
-        this.playerVel.z = 0;
+      // Z
+      this.playerPos.z += this.playerVel.z * sdt;
+      if (overlaps(this.playerPos.x - HW, this.playerPos.y, this.playerPos.z - HW,
+                   this.playerPos.x + HW, this.playerPos.y + H, this.playerPos.z + HW)) {
+        if (wasOnGround && !overlaps(this.playerPos.x - HW, this.playerPos.y + STEP, this.playerPos.z - HW,
+                                     this.playerPos.x + HW, this.playerPos.y + H + STEP, this.playerPos.z + HW)) {
+          this.playerPos.y += STEP;
+        } else {
+          const oz = this.playerPos.z;
+          const dir = this.playerVel.z > 0 ? -1 : 1;
+          for (let p = 0.001; p <= 0.5; p += 0.001) {
+            this.playerPos.z = oz + dir * p;
+            if (!overlaps(this.playerPos.x - HW, this.playerPos.y, this.playerPos.z - HW,
+                         this.playerPos.x + HW, this.playerPos.y + H, this.playerPos.z + HW)) break;
+          }
+          this.playerVel.z = 0;
+        }
       }
-    }
-
-    // Try move Y
-    const newY = py + this.playerVel.y * dt;
-    if (!aabbOverlaps(this.playerPos.x - playerHalfW, newY, this.playerPos.z - playerHalfW, this.playerPos.x + playerHalfW, newY + playerH, this.playerPos.z + playerHalfW)) {
-      this.playerPos.y = newY;
-    } else {
-      if (this.playerVel.y < 0) {
-        // Landing
-        if (!this.onGround) {
-          this.landSquash = 1;
-          this.headBobVel = -0.5;
-          // Fall damage (not in creative)
-          if (this.gameMode !== 'creative') {
-            const fallSpeed = Math.abs(this.playerVel.y);
-            if (fallSpeed > 15) {
-              this.takeDamage(Math.floor((fallSpeed - 15) * 0.5));
+      // Y
+      this.playerPos.y += this.playerVel.y * sdt;
+      if (overlaps(this.playerPos.x - HW, this.playerPos.y, this.playerPos.z - HW,
+                   this.playerPos.x + HW, this.playerPos.y + H, this.playerPos.z + HW)) {
+        if (this.playerVel.y < 0) {
+          const by = Math.floor(this.playerPos.y);
+          this.playerPos.y = by + 1;
+          if (!wasOnGround) {
+            this.landSquash = 1;
+            this.headBobVel = -0.5;
+            if (this.gameMode !== 'creative') {
+              const fs = Math.abs(this.playerVel.y);
+              if (fs > 15) this.takeDamage(Math.floor((fs - 15) * 0.5));
             }
           }
+          this.onGround = true;
+          this.playerVel.y = 0;
+          wasOnGround = true;
+        } else if (this.playerVel.y > 0) {
+          const by = Math.floor(this.playerPos.y + H);
+          this.playerPos.y = by - H;
+          this.playerVel.y = 0;
+        } else {
+          this.playerPos.y += 0.1;
         }
-        this.onGround = true;
-        this.playerVel.y = 0;
-      } else {
-        this.playerVel.y = 0;
       }
     }
 
-    // Check if still on ground (for next frame)
-    if (this.onGround) {
-      const testY = this.playerPos.y - 0.05;
-      this.onGround = aabbOverlaps(
-        this.playerPos.x - playerHalfW, testY, this.playerPos.z - playerHalfW,
-        this.playerPos.x + playerHalfW, testY + 0.05, this.playerPos.z + playerHalfW
-      );
-    }
+    // Reliable ground check
+    const footY = this.playerPos.y - 0.001;
+    this.onGround = overlaps(this.playerPos.x - HW, footY, this.playerPos.z - HW,
+                             this.playerPos.x + HW, footY + 0.002, this.playerPos.z + HW);
 
-    // World boundary (adventure mode only)
+    // Boundary + void
     if (!this.world.isInfinite) {
-      const worldSize = WORLD_CHUNKS * CHUNK_SIZE / 2;
-      this.playerPos.x = Math.max(-worldSize, Math.min(worldSize, this.playerPos.x));
-      this.playerPos.z = Math.max(-worldSize, Math.min(worldSize, this.playerPos.z));
+      const ws = WORLD_CHUNKS * CHUNK_SIZE / 2;
+      this.playerPos.x = Math.max(-ws, Math.min(ws, this.playerPos.x));
+      this.playerPos.z = Math.max(-ws, Math.min(ws, this.playerPos.z));
     }
+    this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
+    if (this.playerPos.y < -10) this.health = 0;
 
-    // Void death
-    if (this.playerPos.y < -10) {
-      this.health = 0;
-    }
-
-    // Head bob
-    const isMoving = Math.abs(this.playerVel.x) + Math.abs(this.playerVel.z) > 1;
-    if (this.onGround && isMoving) {
-      this.headBob += dt * 10;
-    } else {
-      this.headBob *= 0.9;
-    }
-
-    // Land squash recovery
-    this.landSquash *= Math.max(0, 1 - 8 * dt);
-
-    // Head bob velocity recovery
-    this.headBobVel *= Math.max(0, 1 - 6 * dt);
-
-    // Camera position with bob
-    const bobOffset = Math.sin(this.headBob) * 0.06 + this.headBobVel * 0.03;
+    // Camera
+    const spd2d = Math.sqrt(this.playerVel.x ** 2 + this.playerVel.z ** 2);
+    if (this.onGround && spd2d > 0.5) this.headBob += spd2d * 12 * dt;
+    const bobOffset = Math.sin(this.headBob) * 0.06 + this.headBobVel;
+    this.headBobVel *= 0.9;
+    if (this.landSquash > 0) { this.landSquash -= dt * 4; if (this.landSquash < 0) this.landSquash = 0; }
     this.camera.position.set(
       this.playerPos.x,
-      this.playerPos.y + 1.6 + bobOffset,
+      this.playerPos.y + 1.6 + bobOffset - this.landSquash * 0.1,
       this.playerPos.z
     );
   }
