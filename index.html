@@ -51,8 +51,12 @@ canvas { display: block; }
 #hud.hidden { display: none; }
 
 #crosshair {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%) scale(1);
   width: 24px; height: 24px;
+  transition: transform 0.08s ease-out;
+}
+#crosshair.attack-swing {
+  transform: translate(-50%,-50%) scale(1.8);
 }
 #crosshair::before, #crosshair::after {
   content: ''; position: absolute; background: rgba(255,255,255,0.8);
@@ -526,6 +530,15 @@ const FACES = [
   { dir: [0, 0, 1], corners: [[0,0,1],[1,0,1],[1,1,1],[0,1,1]] },  // front
   { dir: [0, 0,-1], corners: [[1,0,0],[0,0,0],[0,1,0],[1,1,0]] },  // back
 ];
+
+// Face brightness for directional lighting
+const FACE_BRIGHTNESS = [1.0, 0.4, 0.8, 0.8, 0.7, 0.7];
+
+// AO brightness levels (0-3 mapped to brightness multiplier)
+const AO_LEVELS = [0.4, 0.6, 0.8, 1.0];
+
+// Edge darkening factor for block outlines
+const EDGE_DARKEN = 0.82;
 
 // Crafting recipes: input block id -> count, output block id -> count
 const RECIPES = [
@@ -1172,13 +1185,14 @@ class TextureGenerator {
     this.transparentAtlasRows = transparent.rows;
 
     // Shared materials (used by all chunks)
-    this.opaqueMaterial = new THREE.MeshLambertMaterial({ map: this.opaqueAtlasTexture });
+    this.opaqueMaterial = new THREE.MeshLambertMaterial({ map: this.opaqueAtlasTexture, vertexColors: true });
     this.transparentMaterial = new THREE.MeshLambertMaterial({
       map: this.transparentAtlasTexture,
       transparent: true,
       alphaTest: 0.1,
       side: THREE.DoubleSide,
       depthWrite: false,
+      vertexColors: true,
     });
 
     // Block icon canvases for UI
@@ -1450,8 +1464,53 @@ class Chunk {
     if (this.mesh) { this.world.scene.remove(this.mesh); this.mesh.geometry.dispose(); this.mesh = null; }
     if (this.transparentMesh) { this.world.scene.remove(this.transparentMesh); this.transparentMesh.geometry.dispose(); this.transparentMesh = null; }
 
-    const opaquePos = [], opaqueUv = [], opaqueNorm = [];
-    const transPos = [], transUv = [], transNorm = [];
+    const opaquePos = [], opaqueUv = [], opaqueNorm = [], opaqueCol = [];
+    const transPos = [], transUv = [], transNorm = [], transCol = [];
+
+    // Helper: check if a world position is solid (for AO)
+    const isSolidAO = (wx, wy, wz) => {
+      const b = this.getWorldBlock(wx, wy, wz);
+      return b !== BLOCK.AIR && BLOCK_DATA[b]?.solid;
+    };
+
+    // Helper: compute AO value for a vertex at world position (wx, wy, wz)
+    // relative to the face normal direction
+    const computeAO = (wx, wy, wz, faceDir) => {
+      // Determine the two tangent axes perpendicular to face normal
+      let u, v;
+      if (faceDir[1] !== 0) { u = [1,0,0]; v = [0,0,1]; } // Y faces
+      else if (faceDir[0] !== 0) { u = [0,1,0]; v = [0,0,1]; } // X faces
+      else { u = [1,0,0]; v = [0,1,0]; } // Z faces
+
+      // The vertex is on the face; determine offset direction from block center
+      // For each vertex, check the 3 AO neighbors: side1, side2, corner
+      // We compute which side of the face this vertex is on
+      // The vertex world pos tells us the direction relative to block center
+      // We need offsets: side1 is along +u or -u from face, side2 along +v or -v, corner is diagonal
+
+      // Determine which side the vertex is on for each tangent axis
+      const blockX = Math.floor(wx), blockY = Math.floor(wy), blockZ = Math.floor(wz);
+
+      // The vertex sits at the edge/corner of the face.
+      // We check 3 neighbors: along u-axis, along v-axis, and diagonal
+      const ox = wx - blockX, oy = wy - blockY, oz = wz - blockZ;
+
+      // Determine u-sign and v-sign from vertex position offset
+      const uSign = (u[0] !== 0) ? (ox > 0.5 ? 1 : -1) :
+                    (u[1] !== 0) ? (oy > 0.5 ? 1 : -1) : (oz > 0.5 ? 1 : -1);
+      const vSign = (v[0] !== 0) ? (ox > 0.5 ? 1 : -1) :
+                    (v[1] !== 0) ? (oy > 0.5 ? 1 : -1) : (oz > 0.5 ? 1 : -1);
+
+      // side1: neighbor in face normal direction + u direction
+      const s1 = isSolidAO(blockX + faceDir[0] + u[0]*uSign, blockY + faceDir[1] + u[1]*uSign, blockZ + faceDir[2] + u[2]*uSign);
+      // side2: neighbor in face normal direction + v direction
+      const s2 = isSolidAO(blockX + faceDir[0] + v[0]*vSign, blockY + faceDir[1] + v[1]*vSign, blockZ + faceDir[2] + v[2]*vSign);
+      // corner: neighbor in face normal direction + u + v
+      const cn = isSolidAO(blockX + faceDir[0] + u[0]*uSign + v[0]*vSign, blockY + faceDir[1] + u[1]*uSign + v[1]*vSign, blockZ + faceDir[2] + u[2]*uSign + v[2]*vSign);
+
+      if (s1 && s2) return 0;
+      return 3 - (s1 + s2 + cn);
+    };
 
     for (let ly = 0; ly < CHUNK_HEIGHT; ly++) {
       for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -1471,13 +1530,33 @@ class Chunk {
             const positions = isTrans ? transPos : opaquePos;
             const uvs = isTrans ? transUv : opaqueUv;
             const norms = isTrans ? transNorm : opaqueNorm;
+            const colors = isTrans ? transCol : opaqueCol;
             const uSize = 1 / texGen.atlasCols;
             const vSize = 1 / atlasRows;
 
+            const faceBright = FACE_BRIGHTNESS[fi];
+
             for (let ci = 0; ci < 4; ci++) {
               const corner = face.corners[ci];
-              positions.push(lx + corner[0], ly + corner[1], lz + corner[2]);
+              const vx = lx + corner[0], vy = ly + corner[1], vz = lz + corner[2];
+              positions.push(vx, vy, vz);
               norms.push(face.dir[0], face.dir[1], face.dir[2]);
+
+              // Compute AO
+              const wx = this.cx * CHUNK_SIZE + vx;
+              const wz = this.cz * CHUNK_SIZE + vz;
+              const aoVal = computeAO(wx, vy, wz, face.dir);
+              let bright = faceBright * AO_LEVELS[aoVal];
+
+              // Edge darkening: vertices at 0 or 1 on each axis get slightly darkened
+              // A vertex is on an edge if 2+ of its coordinates are at block boundary (0 or 1)
+              const isEdgeX = (vx % 1 === 0) ? 1 : 0;
+              const isEdgeY = (vy % 1 === 0) ? 1 : 0;
+              const isEdgeZ = (vz % 1 === 0) ? 1 : 0;
+              const edgeCount = isEdgeX + isEdgeY + isEdgeZ;
+              if (edgeCount >= 2) bright *= EDGE_DARKEN;
+
+              colors.push(bright, bright, bright);
             }
 
             uvs.push(uv.u, uv.v + vSize);
@@ -1490,23 +1569,32 @@ class Chunk {
     }
 
     // Build with indices
-    const buildGeo = (pos, uv, norm) => {
+    const buildGeo = (pos, uv, norm, col) => {
       if (pos.length === 0) return null;
       const indices = [];
       for (let i = 0; i < pos.length / 3; i += 4) {
-        const b = i;
-        indices.push(b, b+1, b+2, b, b+2, b+3);
+        // Flip the quad diagonally if AO values differ too much to avoid interpolation artifacts
+        const c0 = col[(i)*3];
+        const c1 = col[(i+1)*3];
+        const c2 = col[(i+2)*3];
+        const c3 = col[(i+3)*3];
+        if (c0 + c2 > c1 + c3) {
+          indices.push(i, i+1, i+2, i, i+2, i+3);
+        } else {
+          indices.push(i+1, i+2, i+3, i+1, i+3, i);
+        }
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
       geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
       geo.setAttribute('normal', new THREE.Float32BufferAttribute(norm, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
       geo.setIndex(indices);
       return geo;
     };
 
-    const opaqueGeo = buildGeo(opaquePos, opaqueUv, opaqueNorm);
-    const transGeo = buildGeo(transPos, transUv, transNorm);
+    const opaqueGeo = buildGeo(opaquePos, opaqueUv, opaqueNorm, opaqueCol);
+    const transGeo = buildGeo(transPos, transUv, transNorm, transCol);
 
     if (opaqueGeo) {
       this.mesh = new THREE.Mesh(opaqueGeo, texGen.opaqueMaterial);
@@ -1719,6 +1807,9 @@ class SoundSystem {
   constructor() {
     this.ctx = null;
     this.enabled = true;
+    // Ambient sound nodes
+    this.ambientNodes = null;
+    this.ambientPlaying = false;
   }
 
   init() {
@@ -1772,6 +1863,128 @@ class SoundSystem {
       osc.connect(gain); gain.connect(this.ctx.destination);
       osc.start(now); osc.stop(now + 0.08);
     }
+  }
+
+  // Start ambient environmental sounds
+  startAmbient(isNight) {
+    if (!this.enabled || !this.ctx || this.ambientPlaying) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+
+    this.ambientNodes = { oscillators: [], gains: [], noiseNode: null };
+
+    const masterGain = this.ctx.createGain();
+    masterGain.gain.value = 0.03;
+    masterGain.connect(this.ctx.destination);
+    this.ambientNodes.masterGain = masterGain;
+
+    // Wind: low-frequency filtered noise
+    try {
+      const bufferSize = this.ctx.sampleRate * 2;
+      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+      noise.loop = true;
+      const noiseFilter = this.ctx.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.value = 200;
+      const noiseGain = this.ctx.createGain();
+      noiseGain.gain.value = 0.4;
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(masterGain);
+      noise.start();
+      this.ambientNodes.noiseNode = noise;
+    } catch(e) {}
+
+    // Birds (daytime): random high-frequency chirps via scheduled oscillators
+    if (!isNight) {
+      this._scheduleBirdChirps(masterGain);
+    }
+
+    // Crickets (nighttime): mid-frequency pulsing
+    if (isNight) {
+      this._scheduleCrickets(masterGain);
+    }
+
+    this.ambientPlaying = true;
+  }
+
+  _scheduleBirdChirps(masterGain) {
+    if (!this.enabled || !this.ctx || !this.ambientPlaying) return;
+    const chirp = () => {
+      if (!this.ambientPlaying || !this.ctx) return;
+      try {
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const baseFreq = 2000 + Math.random() * 2000;
+        osc.frequency.setValueAtTime(baseFreq, now);
+        osc.frequency.linearRampToValueAtTime(baseFreq + 500 + Math.random() * 1000, now + 0.05);
+        osc.frequency.linearRampToValueAtTime(baseFreq - 200, now + 0.1);
+        gain.gain.setValueAtTime(0.02, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.12);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        osc.start(now);
+        osc.stop(now + 0.12);
+      } catch(e) {}
+      // Schedule next chirp at random interval
+      setTimeout(() => this._scheduleBirdChirps(masterGain), 2000 + Math.random() * 5000);
+    };
+    setTimeout(chirp, 1000 + Math.random() * 3000);
+  }
+
+  _scheduleCrickets(masterGain) {
+    if (!this.enabled || !this.ctx || !this.ambientPlaying) return;
+    try {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 4000 + Math.random() * 1000;
+      // Pulsing amplitude
+      const lfo = this.ctx.createOscillator();
+      const lfoGain = this.ctx.createGain();
+      lfo.frequency.value = 8 + Math.random() * 4;
+      lfoGain.gain.value = 0.015;
+      lfo.connect(lfoGain);
+      lfoGain.connect(gain.gain);
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(masterGain);
+      lfo.start();
+      osc.start();
+      this.ambientNodes.cricketOsc = osc;
+      this.ambientNodes.cricketLfo = lfo;
+    } catch(e) {}
+  }
+
+  stopAmbient() {
+    if (!this.ambientPlaying || !this.ambientNodes) return;
+    try {
+      if (this.ambientNodes.noiseNode) {
+        this.ambientNodes.noiseNode.stop();
+      }
+      if (this.ambientNodes.cricketOsc) {
+        this.ambientNodes.cricketOsc.stop();
+      }
+      if (this.ambientNodes.cricketLfo) {
+        this.ambientNodes.cricketLfo.stop();
+      }
+      if (this.ambientNodes.masterGain) {
+        this.ambientNodes.masterGain.disconnect();
+      }
+    } catch(e) {}
+    this.ambientNodes = null;
+    this.ambientPlaying = false;
+  }
+
+  // Switch ambient sound between day and night
+  switchAmbient(isNight) {
+    this.stopAmbient();
+    this.startAmbient(isNight);
   }
 }
 
@@ -1979,10 +2192,26 @@ class Mob {
   update(dt, playerPos, world) {
     if (this.deathTimer >= 0) {
       this.deathTimer += dt;
-      // Fall over animation
-      this.group.rotation.x = Math.min(Math.PI / 2, this.deathTimer * 5);
-      this.group.position.y = this.pos.y - this.deathTimer * 0.3;
-      return this.deathTimer > 1.5; // true = remove
+      // Fall over animation (first 0.3s)
+      if (this.deathTimer < 0.3) {
+        this.group.rotation.x = Math.min(Math.PI / 2, this.deathTimer * 5);
+      }
+      // Red flash (0.2s)
+      if (this.deathTimer < 0.2) {
+        this.bodyMat.emissive.setHex(0xff0000);
+        this.bodyMat.emissiveIntensity = 0.5;
+      } else {
+        this.bodyMat.emissive.setHex(0x000000);
+        this.bodyMat.emissiveIntensity = 0;
+      }
+      // Shrink away (after 0.3s, over 0.5s)
+      if (this.deathTimer > 0.3) {
+        const shrinkT = Math.min(1, (this.deathTimer - 0.3) / 0.5);
+        const scale = 1 - shrinkT;
+        this.group.scale.set(scale, scale, scale);
+        this.group.position.y = this.pos.y - shrinkT * 0.5;
+      }
+      return this.deathTimer > 0.8; // true = remove (was 1.5, faster now)
     }
 
     this.animTime += dt;
@@ -2269,6 +2498,26 @@ class Game {
     this.breakProgress = 0;
     this.breakTarget = null;
     this.highlightMesh = null;
+    this.breakOverlayMesh = null; // wireframe overlay for breaking animation
+    this.breakStage = 0; // 0-4 stages of cracking
+    this.breakStageTimer = 0; // time accumulator for break sound stages
+
+    // Place animation
+    this.placeAnimations = []; // { mesh, timer, duration }
+
+    // Camera shake (for damage)
+    this.cameraShake = { intensity: 0, timer: 0 };
+
+    // Attack animation
+    this.attackSwingTimer = 0;
+
+    // Walk sway for held item visual
+    this.walkSwayTime = 0;
+    this.wasOnGroundPrev = false;
+
+    // Environment particles
+    this.envParticles = [];
+    this.envParticleTimer = 0;
 
     this.accumulatedTime = 0;
     this.mobSpawnTimer = 0;
@@ -2316,6 +2565,16 @@ class Game {
     this.highlightMesh.visible = false;
     this.scene.add(this.highlightMesh);
 
+    // Break overlay mesh (crack wireframe)
+    const brkGeo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+    const brkMat = new THREE.MeshBasicMaterial({
+      color: 0x222222, wireframe: true, transparent: true, opacity: 0,
+      depthTest: true,
+    });
+    this.breakOverlayMesh = new THREE.Mesh(brkGeo, brkMat);
+    this.breakOverlayMesh.visible = false;
+    this.scene.add(this.breakOverlayMesh);
+
     // Lighting
     this._setupLighting();
 
@@ -2337,38 +2596,39 @@ class Game {
   }
 
   _setupLighting() {
-    // Ambient
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    // Ambient - reduced since vertex colors handle face shading
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
     this.scene.add(this.ambientLight);
 
     // Sun directional light
-    this.sunLight = new THREE.DirectionalLight(0xfff5e0, 0.9);
+    this.sunLight = new THREE.DirectionalLight(0xfff5e0, 0.6);
     this.sunLight.position.set(50, 80, 30);
     this.scene.add(this.sunLight);
 
     // Hemisphere light for sky/ground color
-    this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x556633, 0.3);
+    this.hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x556633, 0.25);
     this.scene.add(this.hemiLight);
   }
 
   _createClouds() {
-    const cloudMat = new THREE.MeshBasicMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.6,
-      depthWrite: false, side: THREE.DoubleSide,
-    });
-    for (let i = 0; i < 12; i++) {
-      const w = 8 + Math.random() * 16;
-      const d = 6 + Math.random() * 10;
-      const geo = new THREE.BoxGeometry(w, 0.5, d);
-      const cloud = new THREE.Mesh(geo, cloudMat.clone());
+    for (let i = 0; i < 18; i++) {
+      const w = 6 + Math.random() * 14;
+      const d = 4 + Math.random() * 8;
+      const geo = new THREE.PlaneGeometry(w, d);
+      const baseOpacity = 0.3 + Math.random() * 0.2;
+      const cloudMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: baseOpacity,
+        depthWrite: false, side: THREE.DoubleSide,
+      });
+      const cloud = new THREE.Mesh(geo, cloudMat);
+      cloud.rotation.x = -Math.PI / 2;
       cloud.position.set(
-        Math.random() * 100 - 50,
+        Math.random() * 120 - 60,
         50 + Math.random() * 10,
-        Math.random() * 100 - 50
+        Math.random() * 120 - 60
       );
-      cloud.material.opacity = 0.35 + Math.random() * 0.25;
       this.scene.add(cloud);
-      this.cloudMeshes.push({ mesh: cloud, speed: 0.3 + Math.random() * 0.5 });
+      this.cloudMeshes.push({ mesh: cloud, speed: 0.3 + Math.random() * 0.5, baseOpacity });
     }
 
     // Sun sphere
@@ -2714,6 +2974,10 @@ class Game {
     this.isPlaying = true;
     this.clock.start();
 
+    // Start ambient sounds
+    const isNight = this.dayTime < 0.25 || this.dayTime > 0.75;
+    this.sound.startAmbient(isNight);
+
     // Update HUD
     this._updateHealthUI();
     this._updateHotbarUI();
@@ -2732,6 +2996,7 @@ class Game {
   pause() {
     this.isPlaying = false;
     this.controls.unlock();
+    this.sound.stopAmbient();
     const modeNames = { creative: '创造模式', survival: '生存模式', adventure: '冒险模式' };
     document.getElementById('pauseModeLabel').textContent = modeNames[this.gameMode] || '';
     document.getElementById('pauseMenu').classList.remove('hidden');
@@ -2743,11 +3008,15 @@ class Game {
     this.controls.lock();
     this.isPlaying = true;
     this.clock.start();
+    // Resume ambient sounds
+    const isNight = this.dayTime < 0.25 || this.dayTime > 0.75;
+    this.sound.startAmbient(isNight);
   }
 
   quit() {
     this.isPlaying = false;
     this.controls.unlock();
+    this.sound.stopAmbient();
     // Clean up adventure stuff
     this.advActive = false;
     this.bossMob = null;
@@ -2770,6 +3039,12 @@ class Game {
     this.mobs = [];
     this.droppedItems.forEach(d => d.dispose(this.scene));
     this.droppedItems = [];
+    // Clean up place animations
+    this.placeAnimations.forEach(a => { this.scene.remove(a.mesh); a.mesh.geometry.dispose(); a.mesh.material.dispose(); });
+    this.placeAnimations = [];
+    // Clean up environment particles
+    this.envParticles.forEach(p => { this.scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); });
+    this.envParticles = [];
   }
 
   openInventory() {
@@ -3044,6 +3319,14 @@ class Game {
           if (!wasOnGround) {
             this.landSquash = 1;
             this.headBobVel = -0.5;
+            // Landing dust particles
+            for (let di = 0; di < 4; di++) {
+              this._spawnDustParticle(
+                this.playerPos.x + (Math.random() - 0.5) * 0.6,
+                this.playerPos.y + 0.1,
+                this.playerPos.z + (Math.random() - 0.5) * 0.6
+              );
+            }
             if (this.gameMode !== 'creative') {
               const fs = Math.abs(this.playerVel.y);
               if (fs > 15) this.takeDamage(Math.floor((fs - 15) * 0.5));
@@ -3105,7 +3388,13 @@ class Game {
         if (!this.breakTarget || this.breakTarget.x !== hit.x || this.breakTarget.y !== hit.y || this.breakTarget.z !== hit.z) {
           this.breakTarget = { x: hit.x, y: hit.y, z: hit.z };
           this.breakProgress = 0;
+          this.breakStage = 0;
+          this.breakStageTimer = 0;
         }
+
+        // Show break overlay on target block
+        this.breakOverlayMesh.visible = true;
+        this.breakOverlayMesh.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
 
         // Creative: instant break
         if (this.gameMode === 'creative') {
@@ -3117,19 +3406,34 @@ class Game {
           }
           this.breakProgress = 0;
           this.breakTarget = null;
+          this.breakOverlayMesh.visible = false;
         } else {
           // Survival: tool speed affects break time
           let breakSpeed = 2;
           const heldItem = this.hotbar[this.hotbarIdx];
           if (heldItem && BLOCK_DATA[heldItem]?.isTool) {
             const ts = BLOCK_DATA[heldItem].toolSpeed || 1;
-            // Apply tool speed for appropriate blocks
             if (hit.block === BLOCK.STONE || hit.block === BLOCK.COAL_ORE ||
                 hit.block === BLOCK.IRON_ORE || hit.block === BLOCK.GOLD_ORE || hit.block === BLOCK.DIAMOND_ORE) {
               breakSpeed *= ts;
             }
           }
           this.breakProgress += dt * breakSpeed;
+
+          // Break stage animation (5 stages: 0%, 25%, 50%, 75%, 100%)
+          const newStage = Math.min(4, Math.floor(this.breakProgress * 5));
+          if (newStage > this.breakStage) {
+            this.breakStage = newStage;
+            // Play crack sound at each new stage
+            this.sound.play('hit');
+          }
+
+          // Update break overlay opacity based on progress
+          this.breakOverlayMesh.material.opacity = 0.15 + this.breakProgress * 0.5;
+          // Darken the wireframe color as progress increases
+          const darkVal = Math.floor(0x33 - this.breakProgress * 0x22);
+          this.breakOverlayMesh.material.color.setHex(Math.max(0x111111, darkVal << 16 | darkVal << 8 | darkVal));
+
           if (this.breakProgress >= 1) {
             if (hit.block !== BLOCK.BEDROCK) {
               const color = this._getBlockThreeColor(hit.block);
@@ -3140,13 +3444,20 @@ class Game {
             }
             this.breakProgress = 0;
             this.breakTarget = null;
+            this.breakOverlayMesh.visible = false;
           }
+        }
+      } else {
+        // Not holding left click - hide break overlay
+        if (!this.mouse.left) {
+          this.breakOverlayMesh.visible = false;
         }
       }
     } else {
       this.highlightMesh.visible = false;
       this.breakTarget = null;
       this.breakProgress = 0;
+      this.breakOverlayMesh.visible = false;
     }
 
     // Right click - place / eat food
@@ -3200,6 +3511,7 @@ class Game {
             if (this.world.getBlock(px, py, pz) === BLOCK.AIR || this.world.getBlock(px, py, pz) === BLOCK.WATER) {
               this.world.setBlock(px, py, pz, selectedBlock);
               this.sound.play('place');
+              this._createPlaceAnimation(px, py, pz, selectedBlock);
             }
           }
         } else {
@@ -3209,6 +3521,7 @@ class Game {
               this._removeBlock(selectedBlock, 1);
               this._updateHotbarUI();
               this.sound.play('place');
+              this._createPlaceAnimation(px, py, pz, selectedBlock);
             }
           }
         }
@@ -3225,6 +3538,166 @@ class Game {
       [BLOCK.GLASS]: 0xc8dcff, [BLOCK.RED_FLOWER]: 0xe03030, [BLOCK.YELLOW_FLOWER]: 0xf0e040,
     };
     return colors[blockId] || 0xaaaaaa;
+  }
+
+  _createPlaceAnimation(px, py, pz, blockId) {
+    const color = this._getBlockThreeColor(blockId);
+    const geo = new THREE.BoxGeometry(1.01, 1.01, 1.01);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(px + 0.5, py + 0.5, pz + 0.5);
+    mesh.scale.set(0.8, 0.8, 0.8);
+    this.scene.add(mesh);
+    this.placeAnimations.push({ mesh, timer: 0, duration: 0.15 });
+  }
+
+  _updatePlaceAnimations(dt) {
+    for (let i = this.placeAnimations.length - 1; i >= 0; i--) {
+      const anim = this.placeAnimations[i];
+      anim.timer += dt;
+      const t = Math.min(1, anim.timer / anim.duration);
+      // Ease out: scale from 0.8 to 1.0
+      const s = 0.8 + (1.0 - 0.8) * (1 - Math.pow(1 - t, 3));
+      anim.mesh.scale.set(s, s, s);
+      anim.mesh.material.opacity = 0.5 * (1 - t);
+      if (anim.timer >= anim.duration) {
+        this.scene.remove(anim.mesh);
+        anim.mesh.geometry.dispose();
+        anim.mesh.material.dispose();
+        this.placeAnimations.splice(i, 1);
+      }
+    }
+  }
+
+  _updateEnvironmentParticles(dt) {
+    this.envParticleTimer += dt;
+
+    // Spawn falling leaves near trees (every 0.5-2s)
+    if (this.envParticleTimer > 0.8 + Math.random() * 1.2) {
+      this.envParticleTimer = 0;
+      const isNight = this.dayTime < 0.25 || this.dayTime > 0.75;
+
+      if (!isNight && Math.random() < 0.6) {
+        // Falling leaf particle
+        const ox = this.playerPos.x + (Math.random() - 0.5) * 30;
+        const oz = this.playerPos.z + (Math.random() - 0.5) * 30;
+        // Check if above a tree (look for leaves block)
+        const gy = this.world.getHeight(Math.floor(ox), Math.floor(oz));
+        if (gy > SEA_LEVEL + 3) {
+          // Check for tree nearby
+          for (let dy = gy; dy < gy + 6 && dy < CHUNK_HEIGHT; dy++) {
+            const b = this.world.getBlock(Math.floor(ox), dy, Math.floor(oz));
+            if (b === BLOCK.LEAVES) {
+              this._spawnLeafParticle(ox, dy + 0.5, oz);
+              break;
+            }
+          }
+        }
+      }
+
+      // Water splash particles (near water)
+      if (Math.random() < 0.3) {
+        const wx = this.playerPos.x + (Math.random() - 0.5) * 20;
+        const wz = this.playerPos.z + (Math.random() - 0.5) * 20;
+        const bx = Math.floor(wx), bz = Math.floor(wz);
+        const waterY = SEA_LEVEL + 1;
+        const aboveBlock = this.world.getBlock(bx, waterY, bz);
+        if (aboveBlock === BLOCK.AIR && this.world.getBlock(bx, waterY - 1, bz) === BLOCK.WATER) {
+          this._spawnWaterParticle(wx, waterY, wz);
+        }
+      }
+
+      // Dust particles when running on ground
+      const spd2d = Math.sqrt(this.playerVel.x ** 2 + this.playerVel.z ** 2);
+      if (this.onGround && spd2d > 3 && Math.random() < 0.5) {
+        this._spawnDustParticle(
+          this.playerPos.x + (Math.random() - 0.5) * 0.4,
+          this.playerPos.y,
+          this.playerPos.z + (Math.random() - 0.5) * 0.4
+        );
+      }
+    }
+
+    // Update existing env particles
+    for (let i = this.envParticles.length - 1; i >= 0; i--) {
+      const p = this.envParticles[i];
+      p.vy += (p.gravity || 0) * dt;
+      p.mesh.position.x += (p.vx || 0) * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += (p.vz || 0) * dt;
+      p.mesh.rotation.x += (p.rotSpeed || 0) * dt;
+      p.mesh.rotation.z += (p.rotSpeed2 || 0) * dt;
+      p.life -= dt;
+      p.mesh.material.opacity = Math.max(0, Math.min(1, p.life * p.fadeRate));
+      if (p.life <= 0) {
+        this.scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        this.envParticles.splice(i, 1);
+      }
+    }
+  }
+
+  _spawnLeafParticle(x, y, z) {
+    const size = 0.06 + Math.random() * 0.06;
+    const geo = new THREE.BoxGeometry(size, size, size * 0.3);
+    const mat = new THREE.MeshBasicMaterial({
+      color: Math.random() < 0.5 ? 0x4caf50 : 0x3a8f28,
+      transparent: true, opacity: 0.7,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    this.envParticles.push({
+      mesh, vy: -0.5 - Math.random() * 0.5,
+      vx: (Math.random() - 0.5) * 0.8,
+      vz: (Math.random() - 0.5) * 0.8,
+      gravity: -0.3,
+      rotSpeed: Math.random() * 3 - 1.5,
+      rotSpeed2: Math.random() * 2 - 1,
+      life: 3 + Math.random() * 3,
+      fadeRate: 0.5,
+    });
+  }
+
+  _spawnWaterParticle(x, y, z) {
+    const size = 0.03 + Math.random() * 0.03;
+    const geo = new THREE.BoxGeometry(size, size, size);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0x88bbff, transparent: true, opacity: 0.6,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    this.envParticles.push({
+      mesh, vy: 1.5 + Math.random() * 1,
+      vx: (Math.random() - 0.5) * 1,
+      vz: (Math.random() - 0.5) * 1,
+      gravity: -8,
+      rotSpeed: 0, rotSpeed2: 0,
+      life: 0.4 + Math.random() * 0.3,
+      fadeRate: 3,
+    });
+  }
+
+  _spawnDustParticle(x, y, z) {
+    const size = 0.03 + Math.random() * 0.03;
+    const geo = new THREE.BoxGeometry(size, size, size);
+    const mat = new THREE.MeshBasicMaterial({
+      color: 0xaa9977, transparent: true, opacity: 0.4,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    this.scene.add(mesh);
+    this.envParticles.push({
+      mesh, vy: 0.5 + Math.random() * 0.5,
+      vx: (Math.random() - 0.5) * 0.5,
+      vz: (Math.random() - 0.5) * 0.5,
+      gravity: -2,
+      rotSpeed: 0, rotSpeed2: 0,
+      life: 0.5 + Math.random() * 0.5,
+      fadeRate: 2,
+    });
   }
 
   _updateMobs(dt) {
@@ -3313,6 +3786,10 @@ class Game {
 
       if (result === true) {
         // Mob dead or despawned
+        // Emit death particles for non-despawn deaths
+        if (mob.deathTimer >= 0) {
+          this.particles.emit(mob.pos.x, mob.pos.y + 0.5, mob.pos.z, 0xff4444, 5);
+        }
         // Survival: give XP for killing hostile mobs
         if (this.gameMode === 'survival' && (mob.type === 'zombie' || mob.type === 'skeleton') && mob.deathTimer >= 0) {
           this.xp += mob.type === 'zombie' ? 5 : 8;
@@ -3443,18 +3920,33 @@ class Game {
     const sunHeight = Math.sin(sunAngle);
     const dayFactor = Math.max(0, Math.min(1, sunHeight * 2 + 0.5));
 
-    this.sunLight.intensity = dayFactor * 1.0;
-    this.ambientLight.intensity = 0.15 + dayFactor * 0.5;
-    this.hemiLight.intensity = 0.1 + dayFactor * 0.3;
+    this.sunLight.intensity = dayFactor * 0.6;
+    this.ambientLight.intensity = 0.3 + dayFactor * 0.5;
+    this.hemiLight.intensity = 0.1 + dayFactor * 0.2;
 
-    // Sky color
+    // Sun color temperature: warm at sunrise/sunset, white at noon
+    const sunColor = new THREE.Color();
+    if (dayFactor > 0.6) {
+      sunColor.setHex(0xfff5e0); // warm white
+    } else if (dayFactor > 0.3) {
+      const t = (dayFactor - 0.3) / 0.3;
+      sunColor.setHex(0xff8844).lerp(new THREE.Color(0xfff5e0), t);
+    } else {
+      sunColor.setHex(0xff6622);
+    }
+    this.sunLight.color.copy(sunColor);
+
+    // Sky color with gradient simulation (atmospheric scattering)
     const nightColor = new THREE.Color(0x0a0a1a);
     const dayColor = new THREE.Color(0x87ceeb);
-    const sunsetColor = new THREE.Color(0xff8844);
+    const sunsetColor = new THREE.Color(0xff7733);
+    // Zenith is more blue, horizon more warm
+    const dayHorizonColor = new THREE.Color(0xb0d4e8);
+    const nightHorizonColor = new THREE.Color(0x0d0d20);
 
     let skyColor;
     if (dayFactor > 0.6) {
-      skyColor = dayColor;
+      skyColor = dayColor.clone();
     } else if (dayFactor > 0.3) {
       const t = (dayFactor - 0.3) / 0.3;
       skyColor = sunsetColor.clone().lerp(dayColor, t);
@@ -3463,14 +3955,66 @@ class Game {
       skyColor = nightColor.clone().lerp(sunsetColor, t);
     }
 
+    // Underground darkness: if player is below sea level - 5, darken everything
+    const playerY = this.playerPos.y;
+    if (playerY < SEA_LEVEL - 5) {
+      const undergroundFactor = Math.max(0, 1 - (SEA_LEVEL - 5 - playerY) / 15);
+      skyColor.multiplyScalar(undergroundFactor * 0.15 + 0.02);
+    }
+
     this.scene.background = skyColor;
-    this.scene.fog.color = skyColor;
+
+    // Fog: color matches sky, distance varies with time of day and underground
+    const baseFogFar = RENDER_DISTANCE * CHUNK_SIZE;
+    const baseFogNear = RENDER_DISTANCE * CHUNK_SIZE * 0.5;
+
+    let fogNear, fogFar;
+    if (playerY < SEA_LEVEL - 5) {
+      const ug = Math.max(0.05, 1 - (SEA_LEVEL - 5 - playerY) / 15);
+      fogNear = 1;
+      fogFar = 5 + ug * 15;
+    } else {
+      // Night: denser fog (closer)
+      if (dayFactor < 0.3) {
+        fogNear = baseFogNear * 0.3;
+        fogFar = baseFogFar * 0.5;
+      } else if (dayFactor < 0.6) {
+        const t = (dayFactor - 0.3) / 0.3;
+        fogNear = baseFogNear * (0.3 + t * 0.7);
+        fogFar = baseFogFar * (0.5 + t * 0.5);
+      } else {
+        fogNear = baseFogNear;
+        fogFar = baseFogFar;
+      }
+    }
+
+    // Blend fog color toward warmer tone during sunset/sunrise
+    let fogColor = skyColor.clone();
+    if (dayFactor > 0.2 && dayFactor < 0.5) {
+      const t = 1 - Math.abs(dayFactor - 0.35) / 0.15;
+      fogColor.lerp(sunsetColor, Math.max(0, t) * 0.4);
+    }
+
+    this.scene.fog.color.copy(fogColor);
+    this.scene.fog.near = fogNear;
+    this.scene.fog.far = fogFar;
 
     // Move clouds
     for (const cloud of this.cloudMeshes) {
       cloud.mesh.position.x += cloud.speed * dt;
       if (cloud.mesh.position.x > 60) cloud.mesh.position.x = -60;
+      // Cloud opacity varies with time of day
+      const targetOpacity = dayFactor > 0.3 ? cloud.baseOpacity : cloud.baseOpacity * 0.3;
+      cloud.mesh.material.opacity += (targetOpacity - cloud.mesh.material.opacity) * dt * 2;
     }
+
+    // Switch ambient sounds based on day/night
+    const isNightNow = this.dayTime < 0.25 || this.dayTime > 0.75;
+    const wasNight = this._lastAmbientNight;
+    if (wasNight !== undefined && wasNight !== isNightNow) {
+      this.sound.switchAmbient(isNightNow);
+    }
+    this._lastAmbientNight = isNightNow;
   }
 
   takeDamage(amount) {
@@ -3484,6 +4028,10 @@ class Game {
     const overlay = document.getElementById('damageOverlay');
     overlay.classList.add('active');
     setTimeout(() => overlay.classList.remove('active'), 200);
+
+    // Camera shake
+    this.cameraShake.intensity = 0.06;
+    this.cameraShake.timer = 0.3;
 
     if (this.health <= 0) {
       this._die();
@@ -3646,6 +4194,32 @@ class Game {
 
     this.particles.update(dt);
     this._updateDayNight(dt);
+    this._updatePlaceAnimations(dt);
+
+    // Camera shake update
+    if (this.cameraShake.timer > 0) {
+      this.cameraShake.timer -= dt;
+      const shake = this.cameraShake.intensity * (this.cameraShake.timer / 0.3);
+      this.camera.position.x += (Math.random() - 0.5) * shake;
+      this.camera.position.z += (Math.random() - 0.5) * shake;
+    }
+
+    // Attack swing animation
+    if (this.attackSwingTimer > 0) {
+      this.attackSwingTimer -= dt;
+      if (this.attackSwingTimer <= 0.06) {
+        document.getElementById('crosshair').classList.remove('attack-swing');
+      }
+    }
+
+    // Walk sway update
+    const spd2d = Math.sqrt(this.playerVel.x ** 2 + this.playerVel.z ** 2);
+    if (this.onGround && spd2d > 0.5 && !this.isDead) {
+      this.walkSwayTime += spd2d * dt * 8;
+    }
+
+    // Environment particles
+    this._updateEnvironmentParticles(dt);
 
     // FPS counter
     this._fpsFrames++;
@@ -4160,6 +4734,10 @@ document.addEventListener('mousedown', (e) => {
       closestMob.vel.z += kbDir.z * 5;
       closestMob.state = 'fleeing';
       closestMob.walkTimer = 1;
+
+      // Attack swing animation
+      game.attackSwingTimer = 0.15;
+      document.getElementById('crosshair').classList.add('attack-swing');
     }
   }
 });
