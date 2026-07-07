@@ -1347,18 +1347,55 @@ class Chunk {
       for (let lz = 0; lz < CHUNK_SIZE; lz++) {
         const gx = wx + lx;
         const gz = wz + lz;
-        // Multi-octave height
-        const h = Math.floor(
-          noise.fbm(gx * 0.01, gz * 0.01, 5) * 20 +
-          noise.fbm(gx * 0.03, gz * 0.03, 3) * 6
-        ) + SEA_LEVEL;
+
+        // Biome system: temperature + moisture + terrain type
+        const tempNoise = noise.fbm(gx * 0.005 + 100, gz * 0.005, 3);
+        const moistNoise = noise.fbm(gx * 0.005 + 200, gz * 0.005 + 100, 3);
+        const terrainType = noise.fbm(gx * 0.003 + 300, gz * 0.003, 3);
+
+        // Temperature: -1 (cold) to 1 (hot)
+        const temperature = tempNoise;
+        // Moisture: 0 (dry) to 1 (wet)
+        const moisture = (moistNoise + 1) * 0.5;
+        // Terrain: -1 (flat) to 1 (mountain)
+        const terrain = terrainType;
+
+        // Determine biome
+        let biome = 'plains';
+        if (temperature < -0.3) biome = 'snow';
+        else if (temperature > 0.4 && moisture < 0.3) biome = 'desert';
+        else if (moisture > 0.6) biome = 'forest';
+        else if (terrain > 0.5) biome = 'mountain';
+
+        // Height based on terrain type + fbm detail
+        let baseHeight;
+        if (terrain > 0.3) {
+          // Mountains: taller, more jagged
+          baseHeight = noise.fbm(gx * 0.015, gz * 0.015, 5) * 35 +
+                       noise.fbm(gx * 0.05, gz * 0.05, 3) * 10;
+        } else if (terrain < -0.3) {
+          // Flatlands: low, smooth
+          baseHeight = noise.fbm(gx * 0.01, gz * 0.01, 4) * 8 +
+                       noise.fbm(gx * 0.03, gz * 0.03, 2) * 3;
+        } else {
+          // Hills: moderate
+          baseHeight = noise.fbm(gx * 0.012, gz * 0.012, 5) * 18 +
+                       noise.fbm(gx * 0.04, gz * 0.04, 3) * 6;
+        }
+
+        const h = Math.floor(baseHeight) + SEA_LEVEL;
+
+        // River valleys: carve out low areas
+        const riverNoise = noise.fbm(gx * 0.008 + 500, gz * 0.008 + 500, 2);
+        const riverValley = (riverNoise > 0.7) ? 4 : 0;
+        const finalH = Math.max(h - riverValley, 1);
 
         for (let y = 0; y < CHUNK_HEIGHT; y++) {
           let block = BLOCK.AIR;
 
           if (y === 0) {
             block = BLOCK.BEDROCK;
-          } else if (y < h - 4) {
+          } else if (y < finalH - 4) {
             block = BLOCK.STONE;
             // Ores
             const oreNoise = noise.fbm(gx * 0.1 + y * 0.1, gz * 0.1, 2);
@@ -1366,31 +1403,48 @@ class Chunk {
             else if (y < 32 && oreNoise > 0.72) block = BLOCK.GOLD_ORE;
             else if (y < 48 && oreNoise > 0.68) block = BLOCK.IRON_ORE;
             else if (oreNoise > 0.62) block = BLOCK.COAL_ORE;
-          } else if (y < h) {
-            block = h < SEA_LEVEL + 2 ? BLOCK.SAND : BLOCK.DIRT;
-          } else if (y === h) {
-            block = h < SEA_LEVEL + 2 ? BLOCK.SAND : BLOCK.GRASS;
-          } else if (y <= SEA_LEVEL && y > h) {
+          } else if (y < finalH) {
+            // Biome-specific surface layers
+            if (biome === 'desert') {
+              block = BLOCK.SAND;
+            } else if (biome === 'snow') {
+              block = BLOCK.DIRT;
+            } else {
+              block = BLOCK.DIRT;
+            }
+          } else if (y === finalH) {
+            if (biome === 'desert') {
+              block = BLOCK.SAND;
+            } else if (biome === 'snow') {
+              block = y < SEA_LEVEL + 2 ? BLOCK.SAND : BLOCK.STONE; // snow on stone (use stone as base, no snow block yet)
+            } else if (biome === 'mountain' && y > SEA_LEVEL + 15) {
+              block = BLOCK.STONE; // mountain peaks are stone
+            } else {
+              block = y < SEA_LEVEL + 2 ? BLOCK.SAND : BLOCK.GRASS;
+            }
+          } else if (y <= SEA_LEVEL && y > finalH) {
             block = BLOCK.WATER;
           }
 
           this.set(lx, y, lz, block);
         }
 
-        // Flowers on grass
-        if (h >= SEA_LEVEL + 2) {
-          const flowerNoise = noise.noise2D(gx * 0.5, gz * 0.5);
-          if (flowerNoise > 0.7 && Math.random() < 0.3) {
-            const flowerY = h + 1;
-            if (flowerY < CHUNK_HEIGHT) {
-              this.set(lx, flowerY, lz, Math.random() < 0.5 ? BLOCK.RED_FLOWER : BLOCK.YELLOW_FLOWER);
+        // Biome-specific surface features
+        if (finalH >= SEA_LEVEL + 2) {
+          if (biome === 'forest' || biome === 'plains') {
+            const flowerNoise = noise.noise2D(gx * 0.5, gz * 0.5);
+            if (flowerNoise > 0.7 && Math.random() < 0.3) {
+              const flowerY = finalH + 1;
+              if (flowerY < CHUNK_HEIGHT) {
+                this.set(lx, flowerY, lz, Math.random() < 0.5 ? BLOCK.RED_FLOWER : BLOCK.YELLOW_FLOWER);
+              }
             }
           }
         }
       }
     }
 
-    // Trees
+    // Trees (biome-specific density)
     this._generateTrees(noise, wx, wz);
   }
 
@@ -1399,11 +1453,35 @@ class Chunk {
       for (let lz = 2; lz < CHUNK_SIZE - 2; lz++) {
         const gx = wx + lx;
         const gz = wz + lz;
-        if (noise.noise2D(gx * 0.3, gz * 0.3) > 0.65 && Math.random() < 0.12) {
-          // Find surface
+
+        // Determine biome for this position
+        const tempNoise = noise.fbm(gx * 0.005 + 100, gz * 0.005, 3);
+        const moistNoise = noise.fbm(gx * 0.005 + 200, gz * 0.005 + 100, 3);
+        const terrainType = noise.fbm(gx * 0.003 + 300, gz * 0.003, 3);
+        const temperature = tempNoise;
+        const moisture = (moistNoise + 1) * 0.5;
+        const terrain = terrainType;
+
+        let biome = 'plains';
+        if (temperature < -0.3) biome = 'snow';
+        else if (temperature > 0.4 && moisture < 0.3) biome = 'desert';
+        else if (moisture > 0.6) biome = 'forest';
+        else if (terrain > 0.5) biome = 'mountain';
+
+        // Tree density per biome
+        let treeChance = 0;
+        let treeNoiseThreshold = 0.65;
+        if (biome === 'forest') { treeChance = 0.25; treeNoiseThreshold = 0.5; }
+        else if (biome === 'plains') { treeChance = 0.08; treeNoiseThreshold = 0.7; }
+        else if (biome === 'mountain') { treeChance = 0.03; treeNoiseThreshold = 0.75; }
+        else if (biome === 'snow') { treeChance = 0.05; treeNoiseThreshold = 0.72; }
+        // desert: no trees
+
+        if (treeChance > 0 && noise.noise2D(gx * 0.3, gz * 0.3) > treeNoiseThreshold && Math.random() < treeChance) {
           let sy = CHUNK_HEIGHT - 1;
           while (sy > 0 && this.get(lx, sy, lz) === BLOCK.AIR) sy--;
-          if (this.get(lx, sy, lz) === BLOCK.GRASS) {
+          const surfaceBlock = this.get(lx, sy, lz);
+          if (surfaceBlock === BLOCK.GRASS || surfaceBlock === BLOCK.STONE) {
             this._placeTree(lx, sy + 1, lz);
           }
         }
@@ -1637,7 +1715,7 @@ class World {
     const cx = Math.floor(x / CHUNK_SIZE);
     const cz = Math.floor(z / CHUNK_SIZE);
     const chunk = this.getChunk(cx, cz);
-    if (!chunk) return BLOCK.AIR;
+    if (!chunk) return BLOCK.BEDROCK; // unloaded chunk = solid wall, prevents falling through
     return chunk.get(x - cx * CHUNK_SIZE, y, z - cz * CHUNK_SIZE);
   }
 
@@ -2492,8 +2570,8 @@ class Game {
     this.isCraftOpen = false;
     this.showDebug = false;
 
-    this.headBob = 0;
-    this.headBobVel = 0;
+    this.walkTime = 0;       // accumulated walking distance for smooth bob
+    this.headBobVel = 0;     // landing bounce offset
     this.landSquash = 0;
     this.breakProgress = 0;
     this.breakTarget = null;
@@ -3214,8 +3292,7 @@ class Game {
         this.playerPos.z = Math.max(-ws, Math.min(ws, this.playerPos.z));
       }
       this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
-      const bobOffset = Math.sin(this.headBob) * 0.06;
-      this.camera.position.set(this.playerPos.x, this.playerPos.y + 1.6 + bobOffset, this.playerPos.z);
+      this.camera.position.set(this.playerPos.x, this.playerPos.y + 1.6, this.playerPos.z);
       return;
     }
 
@@ -3359,15 +3436,17 @@ class Game {
     this.playerPos.y = Math.max(1, Math.min(CHUNK_HEIGHT - 2, this.playerPos.y));
     if (this.playerPos.y < -10) this.health = 0;
 
-    // Camera
+    // Camera bob: distance-based sine for smooth, jitter-free bob
     const spd2d = Math.sqrt(this.playerVel.x ** 2 + this.playerVel.z ** 2);
-    if (this.onGround && spd2d > 0.5) this.headBob += spd2d * 12 * dt;
-    const bobOffset = Math.sin(this.headBob) * 0.06 + this.headBobVel;
-    this.headBobVel *= 0.9;
-    if (this.landSquash > 0) { this.landSquash -= dt * 4; if (this.landSquash < 0) this.landSquash = 0; }
+    if (this.onGround && spd2d > 0.3) {
+      this.walkTime += spd2d * dt; // accumulate distance walked
+    }
+    const bobOffset = Math.sin(this.walkTime * 8) * 0.025 + this.headBobVel * 0.02;
+    this.headBobVel *= Math.max(0, 1 - 10 * dt); // fast decay
+    if (this.landSquash > 0) { this.landSquash -= dt * 6; if (this.landSquash < 0) this.landSquash = 0; }
     this.camera.position.set(
       this.playerPos.x,
-      this.playerPos.y + 1.6 + bobOffset - this.landSquash * 0.1,
+      this.playerPos.y + 1.6 + bobOffset - this.landSquash * 0.06,
       this.playerPos.z
     );
   }
